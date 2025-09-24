@@ -62,7 +62,6 @@ async function createSpace() {
       <UButton color="neutral" variant="soft" size="sm" @click="toggleCreate">Cancel</UButton>
     </div>
 
-    <!-- Скелетоны при загрузке -->
     <ul v-if="loading" class="spaces__list">
       <li v-for="n in 3" :key="n" class="spaces__item">
         <USkeleton class="h-5 w-32 rounded bg-gray-700/50 animate-pulse" />
@@ -70,7 +69,6 @@ async function createSpace() {
       </li>
     </ul>
 
-    <!-- Список -->
     <ul v-else class="spaces__list">
       <li
         v-for="s in spaces"

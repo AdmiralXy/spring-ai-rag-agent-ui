@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import ChatMessages from '~/components/ChatMessages.vue'
 import ChatInput from '~/components/ChatInput.vue'
 
 const router = useRouter()
 const chatsStore = useChatsStore()
+const spacesStore = useSpacesStore()
 
 const chatId = router.currentRoute.value.params.id as string
 chatsStore.activeChatId = chatId
 await chatsStore.loadHistory(chatId)
 
 const messagesContainer = ref<HTMLDivElement | null>(null)
+
+const currentChat = computed(() => chatsStore.activeChat)
+const currentSpace = computed(() =>
+  currentChat.value ? spacesStore.getById(currentChat.value.ragSpace) : null
+)
 
 async function scrollToBottom(smooth = false) {
   await nextTick()
@@ -48,8 +54,9 @@ async function handleSend(text: string) {
 
 <template>
   <div class="chat-area">
+    <div v-if="currentSpace" class="chat-area__space-label">Space: {{ currentSpace.name }}</div>
+
     <div ref="messagesContainer" class="chat-area__messages">
-      <!-- Скелетоны -->
       <template v-if="chatsStore.loading">
         <div v-for="i in 5" :key="i" class="flex flex-col gap-4">
           <div class="flex items-start gap-3">
@@ -65,7 +72,6 @@ async function handleSend(text: string) {
         </div>
       </template>
 
-      <!-- Сообщения -->
       <template v-else-if="chatsStore.activeMessages.length > 0">
         <ChatMessages
           v-for="(m, idx) in chatsStore.activeMessages"
@@ -75,7 +81,6 @@ async function handleSend(text: string) {
         />
       </template>
 
-      <!-- Пустое состояние -->
       <template v-else>
         <div class="empty-state">
           <div class="empty-state__icon">
@@ -98,12 +103,24 @@ async function handleSend(text: string) {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
+}
+
+.chat-area__space-label {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  color: #aaa;
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 .chat-area__messages {
   flex: 1;
   min-height: 0;
-  padding: 1rem;
+  padding: 2rem 1rem 1rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
