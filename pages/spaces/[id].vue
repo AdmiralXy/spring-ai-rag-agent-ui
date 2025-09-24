@@ -17,7 +17,7 @@ const space = computed(() => spacesStore.getById(spaceId))
 
 const newText = ref('')
 
-await useAsyncData(`spaces`, async () => {
+await useAsyncData(`spaces-${spaceId}`, async () => {
   if (!spacesStore.spaces.length) {
     await spacesStore.fetchSpaces(1000)
   }
@@ -37,14 +37,6 @@ async function addText() {
   await ragStore.addDocument(spaceId, { text: newText.value.trim() })
   newText.value = ''
 }
-
-onMounted(() => {
-  const toast = useToast()
-  toast.add({
-    title: 'Проверка',
-    description: 'Если видишь это сообщение — toasts работают'
-  })
-})
 
 async function deleteText(docId: string) {
   const ok = await confirm(

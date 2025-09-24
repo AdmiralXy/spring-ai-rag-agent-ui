@@ -57,22 +57,7 @@ async function handleSend(text: string) {
     <div v-if="currentSpace" class="chat-area__space-label">Space: {{ currentSpace.name }}</div>
 
     <div ref="messagesContainer" class="chat-area__messages">
-      <template v-if="chatsStore.loading">
-        <div v-for="i in 5" :key="i" class="flex flex-col gap-4">
-          <div class="flex items-start gap-3">
-            <div class="flex flex-col gap-2">
-              <div class="h-12 w-[220px] rounded-md bg-[#2a2a2a]" />
-            </div>
-          </div>
-          <div class="flex items-start justify-end gap-3">
-            <div class="flex flex-col gap-2 items-end">
-              <div class="h-12 w-[200px] rounded-md bg-[#3c3c3c]" />
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <template v-else-if="chatsStore.activeMessages.length > 0">
+      <template v-if="chatsStore.activeMessages.length > 0">
         <ChatMessages
           v-for="(m, idx) in chatsStore.activeMessages"
           :key="idx"
