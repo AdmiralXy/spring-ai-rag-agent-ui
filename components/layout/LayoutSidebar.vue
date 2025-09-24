@@ -64,12 +64,6 @@ const onRemoveChatClick = async (e: Event, id: string) => {
 function openChat(id: string) {
   router.push({ name: 'chats-id', params: { id } })
 }
-
-watchEffect(() => {
-  console.log('spaces loaded:', spacesStore.spaces)
-  console.log('selectItems:', selectItems.value)
-  console.log('selectedItems:', selectedSpace.value)
-})
 </script>
 
 <template>
