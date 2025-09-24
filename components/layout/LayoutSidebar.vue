@@ -4,12 +4,47 @@ import { useRouter } from 'vue-router'
 
 const { confirm } = useConfirmDialog()
 const chatsStore = useChatsStore()
+const spacesStore = useSpacesStore()
+
+await useAsyncData('spaces', async () => {
+  await spacesStore.fetchSpaces(1000)
+  return spacesStore.spaces
+})
+
 await useAsyncData('chats', async () => {
   await chatsStore.fetchChats(10000)
   return chatsStore.chats
 })
 
 const router = useRouter()
+
+const creating = ref(false)
+
+const selectedSpace = ref<
+  | {
+      label: string
+      value: string
+    }
+  | undefined
+>(undefined)
+
+const selectItems = computed(() => [
+  { label: 'None', value: '0' },
+  ...spacesStore.spaces.map((s) => ({ label: s.name, value: s.id }))
+])
+
+async function onCreateChatClick() {
+  if (!creating.value) {
+    creating.value = true
+    return
+  }
+  if (selectedSpace.value && selectedSpace.value.value !== '0') {
+    await chatsStore.createChat({ ragSpace: selectedSpace.value.value })
+    await router.push({ name: 'chats-id', params: { id: chatsStore.activeChatId } })
+  }
+  creating.value = false
+  selectedSpace.value = undefined
+}
 
 const onRemoveChatClick = async (e: Event, id: string) => {
   e.stopPropagation()
@@ -19,7 +54,6 @@ const onRemoveChatClick = async (e: Event, id: string) => {
   )
   if (ok) {
     await chatsStore.deleteChat(id)
-    console.log(chatsStore.activeChatId, id)
     if (chatsStore.activeChatId === id) {
       chatsStore.activeChatId = null
       await router.push('/')
@@ -31,10 +65,11 @@ function openChat(id: string) {
   router.push({ name: 'chats-id', params: { id } })
 }
 
-async function createChat(ragSpace: string) {
-  await chatsStore.createChat({ ragSpace })
-  await router.push({ name: 'chats-id', params: { id: chatsStore.activeChatId } })
-}
+watchEffect(() => {
+  console.log('spaces loaded:', spacesStore.spaces)
+  console.log('selectItems:', selectItems.value)
+  console.log('selectedItems:', selectedSpace.value)
+})
 </script>
 
 <template>
@@ -44,10 +79,39 @@ async function createChat(ragSpace: string) {
         <Icon name="material-symbols-light:settings" />
         Spaces
       </NuxtLink>
-      <NuxtLink href="/" class="sidebar__header__button" @click="createChat('todo')">
+
+      <button
+        class="sidebar__header__button"
+        :disabled="creating && !selectedSpace"
+        @click="onCreateChatClick"
+      >
         <Icon name="material-symbols:add" />
-        Create chat
-      </NuxtLink>
+        {{ creating ? 'Confirm' : 'Create chat' }}
+      </button>
+
+      <transition name="slide-fade">
+        <div v-if="creating" class="sidebar__header__select">
+          <USelectMenu
+            v-model="selectedSpace"
+            :items="selectItems"
+            option-attribute="label"
+            value-attribute="value"
+            placeholder="Select space"
+            class="w-full"
+            :ui="{
+              base: 'bg-[#181818] text-white border border-[#474747]',
+              content: 'bg-[#474747] text-white',
+              item: 'bg-[#272727] border border-[#474747]',
+              input: 'bg-[#474747] text-white',
+              leading: 'text-white',
+              trailing: 'text-white',
+              group: 'bg-[#474747] text-white',
+              placeholder: 'text-white',
+              value: 'text-white'
+            }"
+          />
+        </div>
+      </transition>
     </div>
 
     <p class="sidebar__list-name">Chats</p>
@@ -80,6 +144,8 @@ async function createChat(ragSpace: string) {
   margin-top: 0.5rem;
   padding: 1rem 0.5rem;
   min-height: 7vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar__header__button {
@@ -97,6 +163,10 @@ async function createChat(ragSpace: string) {
 .sidebar__header__button:hover {
   background-color: #ffffff1a;
   border-radius: 0.5rem;
+}
+
+.sidebar__header__select {
+  margin-top: 0.4rem;
 }
 
 .sidebar__list-name {
@@ -142,5 +212,15 @@ async function createChat(ragSpace: string) {
 
 .sidebar__delete:hover {
   color: #f55;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.5s ease;
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 </style>
