@@ -54,7 +54,9 @@ async function handleSend(text: string) {
 
 <template>
   <div class="chat-area">
-    <div v-if="currentSpace" class="chat-area__space-label">Space: {{ currentSpace.name }}</div>
+    <client-only>
+      <div v-if="currentSpace" class="chat-area__space-label">Space: {{ currentSpace.name }}</div>
+    </client-only>
 
     <div ref="messagesContainer" class="chat-area__messages">
       <template v-if="chatsStore.activeMessages.length > 0">
