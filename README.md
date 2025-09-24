@@ -1,6 +1,18 @@
-# Nuxt Minimal Starter
+## Spring AI RAG Agent UI
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+<p align="left">
+  <a href="https://github.com/AdmiralXy/spring-ai-rag-agent">
+    <img src="https://img.shields.io/badge/Backend-8A2BE2?style=for-the-badge">
+  </a>
+  <a href="https://github.com/AdmiralXy/spring-ai-rag-agent-ui">
+    <img src="https://img.shields.io/badge/UI-8A2BE2?style=for-the-badge">
+  </a>
+  <a href="https://github.com/AdmiralXy/spring-ai-rag-agent-deploy">
+    <img src="https://img.shields.io/badge/Deployment-FE7D37?style=for-the-badge">
+  </a>
+</p>
+
+<img src=".github/assets/screenshot.png">
 
 ## Setup
 
