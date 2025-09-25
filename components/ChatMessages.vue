@@ -27,25 +27,31 @@ async function copyToClipboard(text: string, idx: number) {
     class="chat-message"
     :class="props.role === 'USER' ? 'chat-message--user' : 'chat-message--assistant'"
   >
-    <template v-for="(part, idx) in parts" :key="idx">
-      <span v-if="part.type === 'text'" class="chat-message__text">
-        {{ part.content }}
-      </span>
+    <div class="chat-message__bubble">
+      <template v-for="(part, idx) in parts" :key="idx">
+        <span v-if="part.type === 'text'" class="chat-message__text">
+          {{ part.content }}
+        </span>
 
-      <strong v-else-if="part.type === 'bold'" class="chat-message__text chat-message__bold">
-        {{ part.content }}
-      </strong>
+        <strong v-else-if="part.type === 'bold'" class="chat-message__text chat-message__bold">
+          {{ part.content }}
+        </strong>
 
-      <div v-else-if="part.type === 'code'" class="chat-message__code-wrapper">
-        <button class="chat-message__copy" @click="copyToClipboard(part.content, idx)">
-          <span v-if="copiedIndex === idx">✅ Copied!</span>
-          <span v-else>📋 Copy</span>
-        </button>
-        <pre class="chat-message__code"><code>{{ part.content }}</code></pre>
-      </div>
+        <div v-else-if="part.type === 'code'" class="chat-message__code-wrapper">
+          <button
+            class="chat-message__copy"
+            :aria-label="copiedIndex === idx ? 'Copied' : 'Copy code to clipboard'"
+            @click="copyToClipboard(part.content, idx)"
+          >
+            <span v-if="copiedIndex === idx">✅ Copied!</span>
+            <span v-else>📋 Copy</span>
+          </button>
+          <pre class="chat-message__code"><code>{{ part.content }}</code></pre>
+        </div>
 
-      <div v-else-if="part.type === 'delimiter'" class="chat-message__delimiter"></div>
-    </template>
+        <div v-else-if="part.type === 'delimiter'" class="chat-message__delimiter"></div>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -58,18 +64,27 @@ async function copyToClipboard(text: string, idx: number) {
 .chat-message--user {
   margin-left: auto;
 }
+.chat-message--assistant {
+  margin-right: auto;
+}
 
-.chat-message--user .chat-message__text {
-  background: #323232d9;
-  color: white;
+.chat-message__bubble {
   padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+}
+
+.chat-message--user .chat-message__bubble {
+  background: #323232d9;
+  color: #ffffff;
   border-radius: 0.75rem 0.75rem 0.25rem 0.75rem;
   min-height: calc(0.25rem * 8);
 }
 
-.chat-message--assistant {
-  margin-right: auto;
-  color: rgb(var(--ui-text));
+.chat-message--assistant .chat-message__bubble {
+  background: #1d1d1d;
+  color: rgb(var(--ui-text, 234, 234, 234));
+  border: 1px solid #3a3a3a;
+  border-radius: 0.75rem 0.75rem 0.75rem 0.25rem;
 }
 
 .chat-message__text {
@@ -90,7 +105,7 @@ async function copyToClipboard(text: string, idx: number) {
 
 .chat-message__code-wrapper {
   position: relative;
-  margin-bottom: 1rem;
+  margin: 0.5rem 0 1rem;
 }
 
 .chat-message__code {
@@ -126,7 +141,6 @@ async function copyToClipboard(text: string, idx: number) {
   cursor: pointer;
   transition: background-color 0.2s;
 }
-
 .chat-message__copy:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
