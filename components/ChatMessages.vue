@@ -11,7 +11,8 @@ const props = defineProps<{
 const parts = computed(() => useMessageParts(props.content))
 
 const copiedIndex = ref<number | null>(null)
-async function copyToClipboard(text: string, idx: number) {
+async function copyToClipboard(text: string | undefined, idx: number) {
+  if (!text) return
   try {
     await navigator.clipboard.writeText(text)
     copiedIndex.value = idx
@@ -29,7 +30,17 @@ async function copyToClipboard(text: string, idx: number) {
   >
     <div class="chat-message__bubble">
       <template v-for="(part, idx) in parts" :key="idx">
-        <span v-if="part.type === 'text'" class="chat-message__text">
+        <div
+          v-if="part.type === 'heading'"
+          class="chat-message__heading"
+          :class="`chat-message__heading--l${part.level || 2}`"
+          role="heading"
+          :aria-level="part.level || 2"
+        >
+          {{ part.content }}
+        </div>
+
+        <span v-else-if="part.type === 'text'" class="chat-message__text">
           {{ part.content }}
         </span>
 
@@ -93,6 +104,30 @@ async function copyToClipboard(text: string, idx: number) {
   overflow-wrap: anywhere;
   font-size: 0.95rem;
   line-height: 1.4;
+}
+
+.chat-message__heading {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1rem 0 0.35rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.chat-message__heading--l1 {
+  font-size: 1.25rem;
+}
+.chat-message__heading--l2 {
+  font-size: 1.15rem;
+}
+.chat-message__heading--l3 {
+  font-size: 1.08rem;
+}
+.chat-message__heading--l4,
+.chat-message__heading--l5,
+.chat-message__heading--l6 {
+  font-size: 1.02rem;
 }
 
 .chat-message__delimiter {
