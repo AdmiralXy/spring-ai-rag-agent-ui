@@ -3,7 +3,12 @@ import LayoutSidebar from '~/components/layout/LayoutSidebar.vue'
 
 useHead({
   title: 'Agent',
-  meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }]
+  meta: [
+    {
+      name: 'viewport',
+      content: 'width=1920px, initial-scale=1, maximum-scale=1, user-scalable=no'
+    }
+  ]
 })
 </script>
 
