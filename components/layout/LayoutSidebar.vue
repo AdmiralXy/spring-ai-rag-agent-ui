@@ -38,7 +38,7 @@ async function onCreateChatClick() {
     creating.value = true
     return
   }
-  if (selectedSpace.value && selectedSpace.value.value !== '0') {
+  if (selectedSpace.value) {
     await chatsStore.createChat({ ragSpace: selectedSpace.value.value })
     await router.push({ name: 'chats-id', params: { id: chatsStore.activeChatId } })
   }
