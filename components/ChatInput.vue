@@ -67,10 +67,10 @@ function onKeydown(e: KeyboardEvent) {
   position: absolute;
   bottom: 1.5rem;
   right: 1rem;
-  width: 2rem;
-  height: 2rem;
+  width: 2.3rem;
+  height: 2.3rem;
   border-radius: 50%;
-  background-color: #3b82f6;
+  background-color: #474747;
   color: white;
   border: none;
   cursor: pointer;

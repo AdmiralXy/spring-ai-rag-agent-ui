@@ -63,14 +63,21 @@ async function deleteText(docId: string) {
     <h1 class="space__title">{{ space?.name }}</h1>
 
     <div class="space__create">
-      <input
+      <textarea
         v-model="newText"
-        type="text"
+        rows="4"
         placeholder="Enter new data..."
         class="space__input"
-        @keyup.enter="addText"
+        @keyup.enter.exact="addText"
       />
-      <UButton color="primary" variant="solid" size="sm" :loading="loading" @click="addText">
+      <UButton
+        color="primary"
+        variant="solid"
+        size="sm"
+        class="space__create__btn"
+        :loading="loading"
+        @click="addText"
+      >
         Add
       </UButton>
     </div>
@@ -125,11 +132,20 @@ async function deleteText(docId: string) {
 .space__create {
   display: flex;
   gap: 0.5rem;
-  align-items: center;
+  align-items: normal;
   margin-bottom: 1rem;
   background: #1e1e1e;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
+}
+
+.space__create__btn {
+  background-color: #eaeaea;
+  cursor: pointer;
+}
+
+.space__create__btn:hover {
+  background-color: #bababa;
 }
 
 .space__input {

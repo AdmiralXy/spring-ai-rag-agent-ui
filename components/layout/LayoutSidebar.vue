@@ -114,7 +114,7 @@ function openChat(id: string) {
         v-for="c in chatsStore.chats"
         :key="c.id"
         class="sidebar__item"
-        :class="{ 'sidebar__item--active': chatsStore.activeChatId == c.id }"
+        :class="{ 'sidebar__item--active': c.id == $router.currentRoute.value.params.id }"
         @click="openChat(c.id)"
       >
         <span>{{ c.title }}</span>
