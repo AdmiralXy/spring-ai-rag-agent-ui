@@ -28,31 +28,45 @@ export const useRagStore = defineStore('rag', {
       }
     },
 
-    /** Add document to space */
-    async addDocument(spaceId: string, payload: AddToSpaceRq) {
-      this.loading = true
-      try {
-        const api = useApi()
-        const res = await api.post<AddToSpaceRs>(`/rag/${spaceId}/documents`, payload)
-
-        const doc: RagDocument = {
-          id: res.docId,
-          content: payload.text,
-          metadata: {}
+    /** Add document to space using server-sent events for progress */
+    async addDocumentStream(
+      spaceId: string,
+      payload: AddToSpaceRq,
+      onProgress: (p: number) => void
+    ) {
+      const res = await fetch(
+        `${useRuntimeConfig().public.apiBase}/rag/${spaceId}/documents/stream`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         }
+      )
 
-        if (!this.documents[spaceId]) {
-          this.documents[spaceId] = []
+      if (!res.body) return
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data:')) {
+            const raw = line.slice(5).trim()
+            if (raw && raw !== '[DONE]') {
+              const num = Number(raw.replace('%', ''))
+              if (!isNaN(num)) {
+                onProgress(num)
+              }
+            }
+          }
         }
-
-        this.documents[spaceId].unshift(doc)
-        return doc
-      } finally {
-        this.loading = false
       }
     },
 
-    /** Delete document from space */
+    /** Delete document with all chunks from space */
     async deleteDocument(spaceId: string, docId: string) {
       this.loading = true
       try {
@@ -60,6 +74,21 @@ export const useRagStore = defineStore('rag', {
         await api.del(`/rag/${spaceId}/documents/${docId}`)
 
         this.documents[spaceId] = (this.documents[spaceId] ?? []).filter((d) => d.id !== docId)
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /** Delete document chunk from space */
+    async deleteDocumentChunk(spaceId: string, docId: string, chunkId: string) {
+      this.loading = true
+      try {
+        const api = useApi()
+        await api.del(`/rag/${spaceId}/documents/${docId}/chunks/${chunkId}`)
+
+        this.documents[spaceId] = (this.documents[spaceId] ?? []).filter(
+          (d) => d.metadata.chunk !== chunkId
+        )
       } finally {
         this.loading = false
       }

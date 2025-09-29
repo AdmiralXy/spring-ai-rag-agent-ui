@@ -49,7 +49,16 @@ declare global {
   export interface RagDocument {
     id: string
     content: string
-    metadata: { [index: string]: any }
+    metadata: RagDocumentMetadata
+  }
+
+  export interface RagDocumentMetadata {
+    doc: string
+    chunk: string
+    space: string
+    number: number
+    total: number
+    distance?: number
   }
 
   export interface ChatMessage {

@@ -16,6 +16,8 @@ const spaceId = route.params.id as string
 const space = computed(() => spacesStore.getById(spaceId))
 
 const newText = ref('')
+const uploading = ref(false)
+const progress = ref(0)
 
 await useAsyncData(`spaces-${spaceId}`, async () => {
   if (!spacesStore.spaces.length) {
@@ -33,18 +35,37 @@ function goBack() {
 }
 
 async function addText() {
-  if (!newText.value.trim()) return
-  await ragStore.addDocument(spaceId, { text: newText.value.trim() })
-  newText.value = ''
+  if (!newText.value.trim() || uploading.value) return
+
+  uploading.value = true
+  progress.value = 0
+
+  let lastFetchAt = 0
+
+  try {
+    await ragStore.addDocumentStream(spaceId, { text: newText.value.trim() }, async (p: number) => {
+      progress.value = p
+      if (p - lastFetchAt >= 10) {
+        await ragStore.fetchDocuments(spaceId, 1000)
+        lastFetchAt = p
+      }
+    })
+
+    await ragStore.fetchDocuments(spaceId, 1000)
+
+    newText.value = ''
+  } finally {
+    uploading.value = false
+  }
 }
 
-async function deleteText(docId: string) {
+async function deleteText(docId: string, chunkId: string) {
   const ok = await confirm(
     'Remove text',
     'This action cannot be undone. Are you sure you want to proceed?'
   )
   if (ok) {
-    await ragStore.deleteDocument(spaceId, docId)
+    await ragStore.deleteDocumentChunk(spaceId, docId, chunkId)
   }
 }
 </script>
@@ -68,6 +89,7 @@ async function deleteText(docId: string) {
         rows="4"
         placeholder="Enter new data..."
         class="space__input"
+        :disabled="uploading"
         @keyup.enter.exact="addText"
       />
       <UButton
@@ -75,12 +97,19 @@ async function deleteText(docId: string) {
         variant="solid"
         size="sm"
         class="space__create__btn"
-        :loading="loading"
+        :loading="uploading || loading"
         @click="addText"
       >
-        Add
+        {{ uploading ? 'Uploading...' : 'Add' }}
       </UButton>
     </div>
+
+    <transition name="fade">
+      <div v-if="uploading" class="space__progress">
+        <UProgress v-model="progress" :max="100" color="primary" size="md" />
+        <p class="space__progress-text">{{ progress }}%</p>
+      </div>
+    </transition>
 
     <ul v-if="loading" class="space__list">
       <li v-for="n in 3" :key="n" class="space__item">
@@ -92,7 +121,7 @@ async function deleteText(docId: string) {
     <ul v-else class="space__list">
       <li v-for="doc in ragStore.getDocsBySpace(spaceId)" :key="doc.id" class="space__item">
         <span>{{ doc.content }}</span>
-        <button class="space__delete" @click="deleteText(doc.id)">
+        <button class="space__delete" @click="deleteText(doc.metadata.doc, doc.metadata.chunk)">
           <Icon name="material-symbols:delete-outline" />
         </button>
       </li>
@@ -100,9 +129,13 @@ async function deleteText(docId: string) {
   </div>
 </template>
 
-<style>
+<style scoped>
 .space {
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 .space__back {
@@ -118,7 +151,6 @@ async function deleteText(docId: string) {
   transition: background-color 0.2s;
   cursor: pointer;
 }
-
 .space__back:hover {
   background-color: #3b3b3b;
 }
@@ -132,7 +164,7 @@ async function deleteText(docId: string) {
 .space__create {
   display: flex;
   gap: 0.5rem;
-  align-items: normal;
+  align-items: flex-start;
   margin-bottom: 1rem;
   background: #1e1e1e;
   padding: 0.75rem 1rem;
@@ -140,12 +172,10 @@ async function deleteText(docId: string) {
 }
 
 .space__create__btn {
-  background-color: #eaeaea;
-  cursor: pointer;
-}
-
-.space__create__btn:hover {
-  background-color: #bababa;
+  min-width: 6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .space__input {
@@ -156,17 +186,30 @@ async function deleteText(docId: string) {
   background: #111;
   color: #fff;
   outline: none;
+  resize: vertical;
 }
-
 .space__input:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px #2563eb55;
 }
 
+.space__progress {
+  margin-bottom: 1rem;
+}
+.space__progress-text {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #aaa;
+  text-align: right;
+}
+
 .space__list {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-right: 0.25rem;
 }
 
 .space__item {
@@ -178,7 +221,6 @@ async function deleteText(docId: string) {
   border-radius: 0.5rem;
   transition: background-color 0.2s;
 }
-
 .space__item:hover {
   background: #2a2a2a;
 }
@@ -191,8 +233,16 @@ async function deleteText(docId: string) {
   font-size: 1.2rem;
   padding: 0.25rem;
 }
-
 .space__delete:hover {
   color: #f55;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
