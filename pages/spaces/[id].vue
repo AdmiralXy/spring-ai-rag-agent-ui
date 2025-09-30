@@ -192,7 +192,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
   box-sizing: border-box;
 }
 
-.space__back {
+:deep(.space__back) {
   border-radius: 50%;
   width: 2.5rem;
   height: 2.5rem;
@@ -205,6 +205,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
   transition: background-color 0.2s;
   cursor: pointer;
 }
+
 .space__back:hover {
   background-color: #3b3b3b;
 }
