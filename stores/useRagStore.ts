@@ -73,7 +73,9 @@ export const useRagStore = defineStore('rag', {
         const api = useApi()
         await api.del(`/rag/${spaceId}/documents/${docId}`)
 
-        this.documents[spaceId] = (this.documents[spaceId] ?? []).filter((d) => d.id !== docId)
+        this.documents[spaceId] = (this.documents[spaceId] ?? []).filter(
+          (d) => d.metadata.doc !== docId
+        )
       } finally {
         this.loading = false
       }

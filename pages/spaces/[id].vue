@@ -61,12 +61,46 @@ async function addText() {
 
 async function deleteText(docId: string, chunkId: string) {
   const ok = await confirm(
-    'Remove text',
+    'Remove text chunk',
     'This action cannot be undone. Are you sure you want to proceed?'
   )
   if (ok) {
     await ragStore.deleteDocumentChunk(spaceId, docId, chunkId)
   }
+}
+
+async function deleteDocument(docId: string) {
+  const ok = await confirm(
+    'Remove entire document',
+    'This will delete all chunks of the document. Are you sure you want to proceed?'
+  )
+  if (ok) {
+    await ragStore.deleteDocument(spaceId, docId)
+  }
+}
+
+const palette = ['#34d399', '#60a5fa', '#f472b6', '#facc15', '#fb923c', '#a78bfa', '#4ade80']
+const docColors = ref<Record<string, { label: string; color: string }>>({})
+
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function getDocStyle(meta: RagDocumentMetadata) {
+  const groupId = meta.doc
+  if (!docColors.value[groupId]) {
+    const hash = hashString(groupId)
+    const index = hash % palette.length
+    const label = `D${index + 1}`
+    const color = palette[index] as string
+    docColors.value[groupId] = { label, color }
+  }
+  return docColors.value[groupId]
 }
 </script>
 
@@ -120,10 +154,30 @@ async function deleteText(docId: string, chunkId: string) {
 
     <ul v-else class="space__list">
       <li v-for="doc in ragStore.getDocsBySpace(spaceId)" :key="doc.id" class="space__item">
-        <span>{{ doc.content }}</span>
-        <button class="space__delete" @click="deleteText(doc.metadata.doc, doc.metadata.chunk)">
-          <Icon name="material-symbols:delete-outline" />
-        </button>
+        <div class="space__doc-label">
+          <span class="space__label" :style="{ backgroundColor: getDocStyle(doc.metadata).color }">
+            {{ getDocStyle(doc.metadata).label }}
+          </span>
+          <button
+            class="space__delete-all"
+            title="Delete all chunks"
+            @click="deleteDocument(doc.metadata.doc)"
+          >
+            <Icon name="material-symbols:delete-forever-outline" />
+          </button>
+        </div>
+
+        <span class="space__content">{{ doc.content }}</span>
+
+        <div class="space__actions">
+          <button
+            class="space__delete"
+            title="Delete chunk"
+            @click="deleteText(doc.metadata.doc, doc.metadata.chunk)"
+          >
+            <Icon name="material-symbols:delete-outline" />
+          </button>
+        </div>
       </li>
     </ul>
   </div>
@@ -213,9 +267,9 @@ async function deleteText(docId: string, chunkId: string) {
 }
 
 .space__item {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   background: #1e1e1e;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
@@ -225,16 +279,58 @@ async function deleteText(docId: string, chunkId: string) {
   background: #2a2a2a;
 }
 
-.space__delete {
+/* Лейбл и кнопка удаления документа */
+.space__doc-label {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.space__label {
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #000;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.space__content {
+  flex: 1;
+  margin-top: 2.25rem;
+  padding-right: 2rem;
+}
+
+.space__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.space__delete,
+.space__delete-all {
   background: none;
   border: none;
-  color: #aaa;
   cursor: pointer;
   font-size: 1.2rem;
   padding: 0.25rem;
+  transition: color 0.2s;
+}
+
+.space__delete {
+  color: #aaa;
 }
 .space__delete:hover {
   color: #f55;
+}
+
+.space__delete-all {
+  color: #aaa;
+}
+.space__delete-all:hover {
+  color: #f90;
 }
 
 .fade-enter-active,
