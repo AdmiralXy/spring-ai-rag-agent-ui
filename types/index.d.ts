@@ -34,6 +34,7 @@ declare global {
 
   export interface AddToSpaceRq {
     text: string
+    batch: boolean
   }
 
   export interface CreateSpaceRs {

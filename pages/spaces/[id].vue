@@ -16,6 +16,7 @@ const spaceId = route.params.id as string
 const space = computed(() => spacesStore.getById(spaceId))
 
 const newText = ref('')
+const batch = ref(true)
 const uploading = ref(false)
 const progress = ref(0)
 
@@ -43,13 +44,17 @@ async function addText() {
   let lastFetchAt = 0
 
   try {
-    await ragStore.addDocumentStream(spaceId, { text: newText.value.trim() }, async (p: number) => {
-      progress.value = p
-      if (p - lastFetchAt >= 10) {
-        await ragStore.fetchDocuments(spaceId, 1000)
-        lastFetchAt = p
+    await ragStore.addDocumentStream(
+      spaceId,
+      { text: newText.value.trim(), batch: batch.value },
+      async (p: number) => {
+        progress.value = p
+        if (p - lastFetchAt >= 10) {
+          await ragStore.fetchDocuments(spaceId, 1000)
+          lastFetchAt = p
+        }
       }
-    })
+    )
 
     await ragStore.fetchDocuments(spaceId, 1000)
 
@@ -126,16 +131,20 @@ function getDocStyle(meta: RagDocumentMetadata) {
         :disabled="uploading"
         @keyup.enter.exact="addText"
       />
-      <UButton
-        color="primary"
-        variant="solid"
-        size="sm"
-        class="space__create__btn"
-        :loading="uploading || loading"
-        @click="addText"
-      >
-        {{ uploading ? 'Uploading...' : 'Add' }}
-      </UButton>
+      <div class="space__create-actions">
+        <UButton
+          color="primary"
+          variant="solid"
+          size="md"
+          class="space__create__btn"
+          icon="i-lucide-rocket"
+          :loading="uploading || loading"
+          @click="addText"
+        >
+          {{ uploading ? 'Uploading...' : 'Upload' }}
+        </UButton>
+        <UCheckbox v-model="batch" label="Enable batching" class="space__batching" />
+      </div>
     </div>
 
     <transition name="fade">
@@ -216,36 +225,46 @@ function getDocStyle(meta: RagDocumentMetadata) {
   margin-bottom: 1rem;
 }
 
+/* Новый красивый блок создания */
 .space__create {
   display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-  background: #1e1e1e;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-}
-
-.space__create__btn {
-  min-width: 6rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: linear-gradient(145deg, #1f1f1f, #262626);
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  margin-bottom: 1.25rem;
+  border: 1px solid #333;
 }
 
 .space__input {
   flex: 1;
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   border: 1px solid #333;
   background: #111;
   color: #fff;
   outline: none;
   resize: vertical;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 .space__input:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px #2563eb55;
+}
+
+.space__create-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.space__batching {
+  color: #aaa;
+  font-size: 0.85rem;
 }
 
 .space__progress {
