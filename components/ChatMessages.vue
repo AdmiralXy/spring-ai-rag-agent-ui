@@ -82,4 +82,32 @@ const parts = computed(() => useMessageParts(props.content))
   font-size: 0.95rem;
   line-height: 1.4;
 }
+
+.chat-message__heading {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1rem 0 0.35rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  color: #eaeaea;
+}
+
+.chat-message__heading--l1 {
+  font-size: 1.25rem;
+}
+
+.chat-message__heading--l2 {
+  font-size: 1.15rem;
+}
+
+.chat-message__heading--l3 {
+  font-size: 1.08rem;
+}
+
+.chat-message__heading--l4,
+.chat-message__heading--l5,
+.chat-message__heading--l6 {
+  font-size: 1.02rem;
+}
 </style>
