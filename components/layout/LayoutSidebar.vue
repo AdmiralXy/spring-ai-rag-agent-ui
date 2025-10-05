@@ -61,15 +61,27 @@ const onRemoveChatClick = async (e: Event, id: string) => {
   }
 }
 
+const emit = defineEmits(['navigate'])
+
 function openChat(id: string) {
   router.push({ name: 'chats-id', params: { id } })
+  emit('navigate')
+}
+
+function navigate() {
+  emit('navigate')
 }
 </script>
 
 <template>
   <div class="sidebar">
     <div class="sidebar__header">
-      <NuxtLink href="/spaces" class="sidebar__header__button">
+      <NuxtLink href="/" class="sidebar__header__button" @click="navigate">
+        <Icon name="material-symbols-light:settings" />
+        Home
+      </NuxtLink>
+
+      <NuxtLink href="/spaces" class="sidebar__header__button" @click="navigate">
         <Icon name="material-symbols-light:settings" />
         Spaces
       </NuxtLink>
@@ -127,11 +139,14 @@ function openChat(id: string) {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
   background-color: #181818;
+  @apply max-lg:mt-[3.5rem];
 }
 
 .sidebar__header {
