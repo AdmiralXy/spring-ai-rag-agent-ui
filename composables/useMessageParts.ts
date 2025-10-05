@@ -1,6 +1,6 @@
 export interface MessagePart {
   type: 'text' | 'code' | 'bold' | 'delimiter' | 'heading'
-  content: string | undefined
+  content: string
   lang?: string
   level?: number
 }
@@ -69,7 +69,7 @@ function splitHeadingsAndText(text: string): MessagePart[] {
       flushBuffer()
       const level = m[1]?.length
       const headingText = m[2]
-      out.push({ type: 'heading', content: headingText, level })
+      out.push({ type: 'heading', content: headingText as string, level })
       out.push({ type: 'delimiter', content: '' })
     } else {
       buffer.push(line)
