@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
+import LayoutWrapper from '~/components/layout/LayoutWrapper.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { confirm } = useConfirmDialog()
-
 const spacesStore = useSpacesStore()
 const ragStore = useRagStore()
 const { loading } = storeToRefs(ragStore)
@@ -19,11 +19,10 @@ const newText = ref('')
 const batch = ref(true)
 const uploading = ref(false)
 const progress = ref(0)
+const creating = ref(false)
 
 await useAsyncData(`spaces-${spaceId}`, async () => {
-  if (!spacesStore.spaces.length) {
-    await spacesStore.fetchSpaces(1000)
-  }
+  if (!spacesStore.spaces.length) await spacesStore.fetchSpaces(1000)
   return spacesStore.spaces
 })
 await useAsyncData(`documents-${spaceId}`, async () => {
@@ -40,7 +39,6 @@ async function addText() {
 
   uploading.value = true
   progress.value = 0
-
   let lastFetchAt = 0
 
   try {
@@ -55,33 +53,22 @@ async function addText() {
         }
       }
     )
-
     await ragStore.fetchDocuments(spaceId, 1000)
-
     newText.value = ''
+    creating.value = false
   } finally {
     uploading.value = false
   }
 }
 
 async function deleteText(docId: string, chunkId: string) {
-  const ok = await confirm(
-    'Remove text chunk',
-    'This action cannot be undone. Are you sure you want to proceed?'
-  )
-  if (ok) {
-    await ragStore.deleteDocumentChunk(spaceId, docId, chunkId)
-  }
+  const ok = await confirm('Remove text chunk', 'This action cannot be undone.')
+  if (ok) await ragStore.deleteDocumentChunk(spaceId, docId, chunkId)
 }
 
 async function deleteDocument(docId: string) {
-  const ok = await confirm(
-    'Remove entire document',
-    'This will delete all chunks of the document. Are you sure you want to proceed?'
-  )
-  if (ok) {
-    await ragStore.deleteDocument(spaceId, docId)
-  }
+  const ok = await confirm('Remove entire document', 'This will delete all chunks.')
+  if (ok) await ragStore.deleteDocument(spaceId, docId)
 }
 
 const palette = ['#34d399', '#60a5fa', '#f472b6', '#facc15', '#fb923c', '#a78bfa', '#4ade80']
@@ -89,10 +76,7 @@ const docColors = ref<Record<string, { label: string; color: string }>>({})
 
 function hashString(str: string): number {
   let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i)
-    hash |= 0
-  }
+  for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i)
   return Math.abs(hash)
 }
 
@@ -110,42 +94,55 @@ function getDocStyle(meta: RagDocumentMetadata) {
 </script>
 
 <template>
-  <div class="space">
-    <UButton
-      variant="ghost"
-      color="neutral"
-      size="sm"
-      icon="material-symbols:arrow-back"
-      class="space__back"
-      @click="goBack"
-    />
-
-    <h1 class="space__title">{{ space?.name }}</h1>
-
-    <div class="space__create">
-      <textarea
-        v-model="newText"
-        rows="4"
-        placeholder="Enter new data..."
-        class="space__input"
-        :disabled="uploading"
-        @keyup.enter.exact="addText"
-      />
-      <div class="space__create-actions">
+  <LayoutWrapper :title="space?.name">
+    <template #header-actions>
+      <div class="flex items-center gap-2">
         <UButton
-          color="primary"
-          variant="solid"
-          size="md"
-          class="space__create__btn"
-          icon="i-lucide-rocket"
-          :loading="uploading || loading"
-          @click="addText"
-        >
-          {{ uploading ? 'Uploading...' : 'Upload' }}
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          icon="material-symbols:arrow-back"
+          class="space__back"
+          @click="goBack"
+        />
+        <UButton color="primary" variant="solid" size="sm" @click="creating = !creating">
+          <Icon :name="creating ? 'material-symbols:close' : 'material-symbols:add'" class="mr-1" />
+          {{ creating ? 'Cancel' : 'Add' }}
         </UButton>
-        <UCheckbox v-model="batch" label="Enable batching" class="space__batching" />
       </div>
-    </div>
+    </template>
+
+    <transition name="slide-fade">
+      <div v-if="creating" class="space__create">
+        <textarea
+          v-model="newText"
+          rows="4"
+          placeholder="Enter new data..."
+          class="space__input"
+          :disabled="uploading"
+          @keyup.enter.exact="addText"
+        />
+        <div class="space__create-actions">
+          <UButton
+            color="primary"
+            variant="solid"
+            size="md"
+            class="space__create__btn"
+            icon="i-lucide-rocket"
+            :loading="uploading || loading"
+            @click="addText"
+          >
+            {{ uploading ? 'Uploading...' : 'Upload' }}
+          </UButton>
+          <UCheckbox
+            v-if="!uploading"
+            v-model="batch"
+            label="Enable batching"
+            class="space__batching"
+          />
+        </div>
+      </div>
+    </transition>
 
     <transition name="fade">
       <div v-if="uploading" class="space__progress">
@@ -189,174 +186,100 @@ function getDocStyle(meta: RagDocumentMetadata) {
         </div>
       </li>
     </ul>
-  </div>
+  </LayoutWrapper>
 </template>
 
 <style scoped>
-.space {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-}
+@import 'tailwindcss/theme';
 
 :deep(.space__back) {
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1rem;
-  background-color: #2a2a2a;
-  color: #fff;
-  transition: background-color 0.2s;
-  cursor: pointer;
+  @apply flex items-center justify-center w-8 h-8 rounded-full bg-[#2a2a2a] text-white cursor-pointer transition-colors duration-200;
 }
 
 .space__back:hover {
-  background-color: #3b3b3b;
-}
-
-.space__title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
+  @apply bg-[#3b3b3b];
 }
 
 .space__create {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: linear-gradient(145deg, #1f1f1f, #262626);
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  margin-bottom: 1.25rem;
-  border: 1px solid #333;
+  @apply flex flex-col gap-3 bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 rounded-xl shadow-md mb-5 border border-[#333];
 }
 
 .space__input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid #333;
-  background: #111;
-  color: #fff;
-  outline: none;
-  resize: vertical;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  @apply flex-1 px-4 py-3 rounded-md border border-[#333] bg-[#111] text-white outline-none resize-y transition-all duration-200;
 }
 .space__input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px #2563eb55;
+  @apply border-blue-500 ring-2 ring-blue-500/30;
 }
 
 .space__create-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  @apply flex flex-wrap justify-between items-center gap-2;
 }
 
 .space__batching {
-  color: #aaa;
-  font-size: 0.85rem;
+  @apply text-gray-400 text-sm;
 }
 
 .space__progress {
-  margin-bottom: 1rem;
+  @apply mb-4;
 }
 .space__progress-text {
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  color: #aaa;
-  text-align: right;
+  @apply mt-1 text-xs text-gray-400 text-right;
 }
 
 .space__list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-right: 0.25rem;
+  @apply flex-1 overflow-y-auto flex flex-col gap-2 pr-1 scroll-smooth;
+  min-height: 50vh;
 }
 
 .space__item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: #1e1e1e;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
+  @apply relative flex flex-col bg-[#1e1e1e] p-4 rounded-md transition-colors duration-200;
 }
 .space__item:hover {
-  background: #2a2a2a;
+  @apply bg-[#2a2a2a];
 }
 
 .space__doc-label {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  @apply absolute top-2 right-2 flex items-center gap-1;
 }
 
 .space__label {
-  font-size: 0.75rem;
-  font-weight: bold;
-  color: #000;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  @apply text-xs font-bold text-black px-2 py-1 rounded;
 }
 
 .space__content {
-  flex: 1;
-  margin-top: 2.25rem;
-  padding-right: 2rem;
+  @apply flex-1 mt-9 pr-8 text-white break-words;
 }
 
 .space__actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
+  @apply flex justify-end mt-2;
 }
 
 .space__delete,
 .space__delete-all {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.25rem;
-  transition: color 0.2s;
-}
-
-.space__delete {
-  color: #aaa;
+  @apply bg-transparent border-none cursor-pointer text-xl p-1 text-gray-400 transition-colors duration-200;
 }
 .space__delete:hover {
-  color: #f55;
-}
-
-.space__delete-all {
-  color: #aaa;
+  @apply text-red-500;
 }
 .space__delete-all:hover {
-  color: #f90;
+  @apply text-amber-500;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  @apply transition-all duration-300 ease-in-out;
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  @apply opacity-0 translate-y-3;
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  @apply transition-opacity duration-300 ease-in-out;
 }
 .fade-enter-from,
 .fade-leave-to {
-  opacity: 0;
+  @apply opacity-0;
 }
 </style>
