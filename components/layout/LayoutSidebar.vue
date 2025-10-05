@@ -139,97 +139,64 @@ function navigate() {
 </template>
 
 <style scoped>
-@import 'tailwindcss/theme';
-
 .sidebar {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: #181818;
-  @apply max-lg:mt-[3.5rem];
+  @apply flex flex-col h-full bg-[#181818] max-lg:mt-[3.5rem];
 }
 
 .sidebar__header {
-  margin-top: 0.5rem;
-  padding: 1rem 0.5rem;
-  min-height: 7vh;
-  display: flex;
-  flex-direction: column;
+  @apply mt-2 p-2 min-h-[7vh] flex flex-col;
 }
 
 .sidebar__header__button {
-  margin-bottom: 0.4rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  @apply mb-1 flex items-center gap-2 p-2 rounded-md text-white transition-colors duration-200 disabled:opacity-50;
 }
 
 .sidebar__header__button:last-child {
-  margin-bottom: 0;
+  @apply mb-0;
 }
 
 .sidebar__header__button:hover {
-  background-color: #ffffff1a;
-  border-radius: 0.5rem;
+  @apply bg-white/10;
 }
 
 .sidebar__header__select {
-  margin-top: 0.4rem;
+  @apply mt-1;
 }
 
 .sidebar__list-name {
-  margin: 0.5rem 0 0 1rem;
-  font-weight: bold;
-  font-size: 0.9rem;
-  color: #aaaaaa;
+  @apply ml-4 mt-2 font-bold text-[0.9rem] text-gray-400;
 }
 
 .sidebar__list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
+  @apply flex-1 overflow-y-auto p-2;
 }
 
 .sidebar__item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  @apply flex justify-between items-center p-3 rounded-md cursor-pointer transition-colors duration-200 text-white;
 }
 
 .sidebar__item:hover {
-  background-color: #ffffff1a;
+  @apply bg-white/10;
 }
 
 .sidebar__item--active {
-  background-color: #2a2a2a;
-  color: #fff;
+  @apply bg-[#2a2a2a] text-white;
 }
 
 .sidebar__delete {
-  background: none;
-  border: none;
-  color: #aaa;
-  cursor: pointer;
-  font-size: 1.1rem;
-  padding: 0.25rem;
+  @apply bg-transparent border-none text-gray-400 cursor-pointer text-[1.1rem] p-1 transition-colors duration-200;
 }
 
 .sidebar__delete:hover {
-  color: #f55;
+  @apply text-red-500;
 }
 
 .slide-fade-enter-active,
 .slide-fade-leave-active {
-  transition: all 0.5s ease;
+  @apply transition-all duration-500 ease-in-out;
 }
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  opacity: 0;
-  transform: translateY(6px);
+  @apply opacity-0 translate-y-[6px];
 }
 </style>
