@@ -18,35 +18,21 @@ defineProps<{
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .wrapper {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 1.5rem;
-  box-sizing: border-box;
-  overflow: hidden;
+  @apply flex flex-col h-full overflow-hidden box-border p-6;
 }
 
 .wrapper__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  @apply flex items-center justify-between mb-4 max-lg:mt-12;
 }
 
 .wrapper__title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #fff;
+  @apply text-[1.5rem] font-bold text-white;
 }
 
 .wrapper__content {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-right: 0.25rem;
-  scroll-behavior: smooth;
+  @apply flex-1 flex flex-col gap-2 pr-1 overflow-y-auto scroll-smooth;
 }
 </style>

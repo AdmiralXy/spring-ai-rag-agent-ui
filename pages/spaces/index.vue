@@ -6,7 +6,6 @@ import { useConfirmDialog } from '~/composables/useConfirmDialog'
 
 const router = useRouter()
 const { confirm } = useConfirmDialog()
-
 const spacesStore = useSpacesStore()
 const { spaces, loading } = storeToRefs(spacesStore)
 
@@ -41,13 +40,12 @@ async function createSpace() {
 </script>
 
 <template>
-  <div class="spaces">
-    <div class="spaces__header">
-      <h1 class="spaces__title">Spaces</h1>
+  <LayoutWrapper title="Spaces">
+    <template #header-actions>
       <UButton color="primary" variant="solid" size="sm" @click="toggleCreate">
         <Icon name="material-symbols:add" class="mr-1" /> Create
       </UButton>
-    </div>
+    </template>
 
     <div v-if="creating" class="spaces__create">
       <input
@@ -84,103 +82,49 @@ async function createSpace() {
         </div>
       </li>
     </ul>
-  </div>
+  </LayoutWrapper>
 </template>
 
 <style scoped>
-.spaces {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 1.5rem;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.spaces__title {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.spaces__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
+@import 'tailwindcss/theme';
 
 .spaces__create {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
-  background: #1e1e1e;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
+  @apply flex flex-wrap gap-2 items-center mb-4 bg-[#1e1e1e] p-3 rounded-md w-full max-lg:grid max-lg:gap-2;
 }
 
 .spaces__input {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid #333;
-  background: #111;
-  color: #fff;
-  outline: none;
+  @apply flex-1 min-w-[200px] px-3 py-2 rounded-md border border-[#333] bg-[#111] text-white outline-none;
 }
 
 .spaces__input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px #2563eb55;
+  @apply border-blue-500 ring-2 ring-blue-500/30;
 }
 
 .spaces__list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-right: 0.25rem;
-  scroll-behavior: smooth;
+  @apply flex-1 overflow-y-auto flex flex-col gap-2 pr-1 scroll-smooth;
 }
 
 .spaces__item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #1e1e1e;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s ease;
-  cursor: pointer;
+  @apply flex justify-between items-center bg-[#1e1e1e] p-3 rounded-md cursor-pointer transition-colors duration-200;
 }
 
 .spaces__item:hover {
-  background: #2a2a2a;
+  @apply bg-[#2a2a2a];
 }
 
 .spaces__name {
-  font-size: 1rem;
-  color: #f3f3f3;
+  @apply text-base text-gray-100;
 }
 
 .spaces__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  @apply flex items-center gap-2;
 }
 
 .spaces__delete {
-  background: none;
-  border: none;
-  color: #aaa;
-  cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.25rem;
-  transition: color 0.2s ease;
+  @apply bg-transparent border-none text-gray-400 cursor-pointer text-[1.2rem] p-1 transition-colors duration-200;
 }
 
 .spaces__delete:hover {
-  color: #f55;
+  @apply text-red-500;
 }
 </style>
