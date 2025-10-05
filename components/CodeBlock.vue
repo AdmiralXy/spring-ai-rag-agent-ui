@@ -56,10 +56,7 @@ async function copy() {
       <span v-if="copied">✅ Copied!</span>
       <span v-else>📋 Copy</span>
     </button>
-
-    <pre class="code-block">
-      <code ref="codeEl"></code>
-    </pre>
+    <pre class="code-block"><code ref="codeEl"></code></pre>
   </div>
 </template>
 
