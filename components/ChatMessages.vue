@@ -144,6 +144,7 @@ async function copyToClipboard(text: string | undefined, idx: number) {
 }
 
 .chat-message__code {
+  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
   background-color: #171717;
   color: #f8f8f2;
   font-size: 0.9rem;

@@ -19,7 +19,6 @@
   font-size: 6rem;
   font-weight: bold;
   color: #666;
-  font-family: 'Fira Code', monospace;
   user-select: none;
 }
 </style>

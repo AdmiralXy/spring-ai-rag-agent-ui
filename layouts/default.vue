@@ -52,7 +52,7 @@ useHead({
   height: 100vh;
   background-color: #212121;
   color: var(--ui-text);
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'Noto Sans', sans-serif;
 }
 
 .layout__sidebar {
