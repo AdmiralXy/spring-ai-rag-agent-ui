@@ -89,7 +89,17 @@ async function createSpace() {
 
 <style scoped>
 .spaces {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 1.5rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.spaces__title {
+  font-size: 1.5rem;
+  font-weight: bold;
 }
 
 .spaces__header {
@@ -97,11 +107,6 @@ async function createSpace() {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-}
-
-.spaces__title {
-  font-size: 1.5rem;
-  font-weight: bold;
 }
 
 .spaces__create {
@@ -130,9 +135,13 @@ async function createSpace() {
 }
 
 .spaces__list {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-right: 0.25rem;
+  scroll-behavior: smooth;
 }
 
 .spaces__item {
@@ -142,7 +151,7 @@ async function createSpace() {
   background: #1e1e1e;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease;
   cursor: pointer;
 }
 
@@ -152,6 +161,7 @@ async function createSpace() {
 
 .spaces__name {
   font-size: 1rem;
+  color: #f3f3f3;
 }
 
 .spaces__actions {
@@ -167,6 +177,7 @@ async function createSpace() {
   cursor: pointer;
   font-size: 1.2rem;
   padding: 0.25rem;
+  transition: color 0.2s ease;
 }
 
 .spaces__delete:hover {

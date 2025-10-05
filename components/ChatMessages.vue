@@ -35,7 +35,6 @@ const parts = computed(() => useMessageParts(props.content))
           {{ part.content }}
         </strong>
 
-        <!-- 💡 Используем новый компонент -->
         <CodeBlock v-else-if="part.type === 'code'" :code="part.content" :idx="idx" />
 
         <div v-else-if="part.type === 'delimiter'" class="chat-message__delimiter"></div>

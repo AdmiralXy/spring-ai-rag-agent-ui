@@ -225,7 +225,6 @@ function getDocStyle(meta: RagDocumentMetadata) {
   margin-bottom: 1rem;
 }
 
-/* Новый красивый блок создания */
 .space__create {
   display: flex;
   flex-direction: column;
@@ -299,7 +298,6 @@ function getDocStyle(meta: RagDocumentMetadata) {
   background: #2a2a2a;
 }
 
-/* Лейбл и кнопка удаления документа */
 .space__doc-label {
   position: absolute;
   top: 0.5rem;
