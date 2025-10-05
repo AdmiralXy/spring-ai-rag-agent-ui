@@ -10,22 +10,31 @@ const copied = ref(false)
 const codeEl = ref<HTMLElement | null>(null)
 const { $hljs } = useNuxtApp()
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
+let lastHighlight = 0
+let throttleTimer: ReturnType<typeof setTimeout> | null = null
 
 async function highlightNow() {
   await nextTick()
   if (!codeEl.value) return
 
-  const code = props.code || ''
+  const code = props.code?.trimEnd() ?? ''
   const result = $hljs.highlightAuto(code)
 
   codeEl.value.innerHTML = result.value
   codeEl.value.className = `hljs language-${result.language || 'plaintext'}`
+  lastHighlight = Date.now()
 }
 
 function scheduleHighlight() {
-  if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(highlightNow, 250)
+  const now = Date.now()
+  const elapsed = now - lastHighlight
+
+  if (elapsed > 100) {
+    highlightNow()
+  } else {
+    if (throttleTimer) clearTimeout(throttleTimer)
+    throttleTimer = setTimeout(highlightNow, 100 - elapsed)
+  }
 }
 
 watch(
@@ -36,7 +45,7 @@ watch(
 
 onMounted(highlightNow)
 onBeforeUnmount(() => {
-  if (debounceTimer) clearTimeout(debounceTimer)
+  if (throttleTimer) clearTimeout(throttleTimer)
 })
 
 async function copy() {
@@ -45,7 +54,7 @@ async function copy() {
     copied.value = true
     setTimeout(() => (copied.value = false), 2000)
   } catch {
-    console.log('Failed to copy to clipboard')
+    console.error('Failed to copy code')
   }
 }
 </script>
