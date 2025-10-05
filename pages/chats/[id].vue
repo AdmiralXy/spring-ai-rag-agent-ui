@@ -85,55 +85,33 @@ async function handleSend(text: string) {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .chat-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  position: relative;
+  @apply flex flex-col flex-1 min-h-0 relative;
 }
 
 .chat-area__space-label {
-  position: absolute;
-  top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.8rem;
-  color: #aaa;
-  opacity: 0.8;
-  pointer-events: none;
+  @apply absolute top-4 left-1/2 -translate-x-1/2 text-xs text-gray-400 opacity-80 pointer-events-none;
 }
 
 .chat-area__messages {
-  flex: 1;
-  min-height: 0;
-  padding: 2rem 1rem 1rem;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  @apply flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 px-4 pt-8 pb-4;
 }
 
 .empty-state {
-  margin: auto;
-  text-align: center;
-  color: #888;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  opacity: 0.8;
-  user-select: none;
+  @apply m-auto text-center text-gray-500 flex flex-col items-center opacity-80 select-none;
 }
 
 .empty-state__icon {
-  font-size: 3rem;
+  @apply text-5xl;
 }
 
 .empty-state__text {
-  font-size: 1rem;
+  @apply text-base;
 }
 
 .chat-area__footer {
-  padding: 0.75rem;
+  @apply p-3;
 }
 </style>
