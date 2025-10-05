@@ -2,7 +2,7 @@ FROM node:22.14.0-alpine AS builder
 RUN apk update && apk upgrade
 WORKDIR /app
 COPY package* ./
-RUN yarn install --ignore-engines
+RUN yarn install --frozen-lockfile --ignore-engines
 COPY . ./
 RUN yarn build
 
