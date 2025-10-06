@@ -48,16 +48,31 @@ async function createSpace() {
     </template>
 
     <div v-if="creating" class="spaces__create">
-      <input
-        v-model="newSpaceName"
-        type="text"
-        placeholder="Enter space name"
-        class="spaces__input"
-      />
-      <UButton color="neutral" variant="solid" size="sm" :loading="loading" @click="createSpace">
-        Save
-      </UButton>
-      <UButton color="neutral" variant="soft" size="sm" @click="toggleCreate">Cancel</UButton>
+      <input v-model="newSpaceName" type="text" placeholder="Space name" class="spaces__input" />
+      <div class="spaces__input__buttons">
+        <UButton
+          icon="material-symbols:check"
+          color="primary"
+          variant="solid"
+          size="sm"
+          :loading="loading"
+          @click="createSpace"
+        >
+          Save
+        </UButton>
+        <UButton
+          icon="material-symbols:close"
+          color="neutral"
+          variant="outline"
+          :ui="{
+            base: 'bg-transparent'
+          }"
+          size="sm"
+          @click="toggleCreate"
+        >
+          Cancel
+        </UButton>
+      </div>
     </div>
 
     <ul v-if="loading" class="spaces__list">
@@ -98,6 +113,10 @@ async function createSpace() {
 
 .spaces__input:focus {
   @apply border-blue-500 ring-2 ring-blue-500/30;
+}
+
+.spaces__input__buttons {
+  @apply flex gap-2;
 }
 
 .spaces__list {

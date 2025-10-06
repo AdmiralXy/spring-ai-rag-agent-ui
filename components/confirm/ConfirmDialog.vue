@@ -8,7 +8,10 @@ const { isOpen, title, subtitle, confirmYes, confirmNo } = useConfirmDialog()
   <UModal
     v-model:open="isOpen"
     :title="title"
-    :ui="{ overlay: 'bg-[#272727ED]', content: 'bg-[#171717]' }"
+    :ui="{
+      overlay: 'bg-[#272727ED]',
+      content: 'bg-[#171717] border-none !divide-none !ring-0 !shadow-none'
+    }"
   >
     <template #body>
       <p class="text-sm text-neutral-400">{{ subtitle }}</p>

@@ -115,7 +115,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
         <textarea
           v-model="newText"
           rows="4"
-          placeholder="Enter new data..."
+          placeholder="Inspiration is a guest that does not willingly visit the lazy..."
           class="space__input"
           :disabled="uploading"
           @keyup.enter.exact="addText"
