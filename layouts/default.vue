@@ -48,8 +48,7 @@ body {
 }
 
 .layout__main {
-  @apply flex flex-col flex-1 transition-all duration-300;
-  margin-left: 280px;
+  @apply ml-[280px] flex flex-1 flex-col transition-all duration-300;
   transition: margin-left 0.3s ease;
 }
 
