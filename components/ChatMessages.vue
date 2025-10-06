@@ -59,14 +59,15 @@ const parts = computed(() => useMessageParts(props.content))
 }
 
 .chat-message__bubble {
-  @apply w-full max-w-full overflow-x-auto rounded-xl px-4 py-3 break-words;
+  @apply w-full max-w-full overflow-x-auto px-4 py-3 break-words;
+  border-radius: 0.75rem 0.75rem 0.75rem 0;
 }
 
 .chat-message--user .chat-message__bubble {
-  @apply rounded-t-xl rounded-bl-md bg-[#323232d9] text-white;
+  @apply bg-[#323232d9] text-white;
 }
 .chat-message--assistant .chat-message__bubble {
-  @apply rounded-t-xl rounded-br-md border border-[#3a3a3a] bg-[#1d1d1d] text-gray-200;
+  @apply border border-[#3a3a3a] bg-[#1d1d1d] text-gray-200;
 }
 
 .chat-message__text {
