@@ -88,7 +88,7 @@ async function handleSend(text: string) {
 @import 'tailwindcss/theme';
 
 .chat-area {
-  @apply relative flex min-h-0 flex-1 flex-col;
+  @apply relative flex min-h-0 flex-1 flex-col overflow-x-hidden;
 }
 
 .chat-area__space-label {
@@ -96,19 +96,12 @@ async function handleSend(text: string) {
 }
 
 .chat-area__messages {
-  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-x-visible overflow-y-auto px-4 pt-8 pb-4;
+  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-8 pb-4;
+  overflow-x: hidden;
 }
 
 .empty-state {
   @apply m-auto flex flex-col items-center text-center text-gray-500 opacity-80 select-none;
-}
-
-.empty-state__icon {
-  @apply text-5xl;
-}
-
-.empty-state__text {
-  @apply text-base;
 }
 
 .chat-area__footer {

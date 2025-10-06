@@ -73,53 +73,35 @@ async function copy() {
 @import 'tailwindcss/theme';
 
 .code-wrapper {
-  @apply relative my-4 max-w-[100%] rounded-lg border border-[#2a2a2a] bg-[#171717] shadow-md;
-  animation: codeEnter 0.3s ease;
-}
-
-@keyframes codeEnter {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  @apply relative my-4 w-full max-w-full rounded-lg border border-[#2a2a2a] bg-[#171717] shadow-md;
 }
 
 .copy-btn {
   @apply absolute top-1 right-1 z-10 cursor-pointer rounded border-none bg-white/10 px-2 py-1 text-xs text-gray-100 transition-colors duration-200;
 }
-.copy-btn:hover {
-  @apply bg-white/20;
-}
 
 .code-block {
-  @apply m-0 bg-transparent p-4 font-mono text-sm leading-relaxed whitespace-pre text-[#f8f8f2];
-  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  @apply m-0 bg-transparent p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap text-[#f8f8f2];
   display: block;
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
 .code-block code {
-  display: inline-block;
-  min-width: 100%;
-  max-width: none;
-  width: max-content;
+  display: block;
+  width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   background: none;
   color: inherit;
-  white-space: pre;
-  overflow-wrap: normal;
-  word-break: normal;
 }
 </style>
