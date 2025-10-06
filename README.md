@@ -12,7 +12,9 @@
   </a>
 </p>
 
-<img src=".github/assets/screenshot.png">
+<img src=".github/assets/screenshot1.jpg">
+<br/><br/>
+<img src=".github/assets/screenshot2.jpg">
 
 ## Setup
 
