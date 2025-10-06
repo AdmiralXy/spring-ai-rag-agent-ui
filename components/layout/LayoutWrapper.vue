@@ -21,11 +21,11 @@ defineProps<{
 @import 'tailwindcss/theme';
 
 .wrapper {
-  @apply flex flex-col h-full overflow-hidden box-border p-6;
+  @apply box-border flex h-full flex-col overflow-hidden p-6;
 }
 
 .wrapper__header {
-  @apply flex items-center justify-between mb-4 max-lg:mt-12;
+  @apply mb-4 flex items-center justify-between max-lg:mt-12;
 }
 
 .wrapper__title {
@@ -33,6 +33,6 @@ defineProps<{
 }
 
 .wrapper__content {
-  @apply flex-1 flex flex-col gap-2 pr-1 overflow-y-auto scroll-smooth;
+  @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
 }
 </style>

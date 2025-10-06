@@ -142,15 +142,15 @@ function navigate() {
 @import 'tailwindcss/theme';
 
 .sidebar {
-  @apply flex flex-col h-full bg-[#181818] max-lg:mt-[3.5rem];
+  @apply flex h-full flex-col bg-[#181818] max-lg:mt-[3.5rem];
 }
 
 .sidebar__header {
-  @apply mt-2 p-2 min-h-[7vh] flex flex-col;
+  @apply mt-2 flex min-h-[7vh] flex-col p-2;
 }
 
 .sidebar__header__button {
-  @apply mb-1 flex items-center gap-2 p-2 rounded-md text-white transition-colors duration-200 disabled:opacity-50;
+  @apply mb-1 flex items-center gap-2 rounded-md p-2 text-white transition-colors duration-200 disabled:opacity-50;
 }
 
 .sidebar__header__button:last-child {
@@ -166,7 +166,7 @@ function navigate() {
 }
 
 .sidebar__list-name {
-  @apply ml-4 mt-2 font-bold text-[0.9rem] text-gray-400;
+  @apply mt-2 ml-4 text-[0.9rem] font-bold text-gray-400;
 }
 
 .sidebar__list {
@@ -174,7 +174,7 @@ function navigate() {
 }
 
 .sidebar__item {
-  @apply flex justify-between items-center p-3 rounded-md cursor-pointer transition-colors duration-200 text-white;
+  @apply flex cursor-pointer items-center justify-between rounded-md p-3 text-white transition-colors duration-200;
 }
 
 .sidebar__item:hover {
@@ -186,7 +186,7 @@ function navigate() {
 }
 
 .sidebar__delete {
-  @apply bg-transparent border-none text-gray-400 cursor-pointer text-[1.1rem] p-1 transition-colors duration-200;
+  @apply cursor-pointer border-none bg-transparent p-1 text-[1.1rem] text-gray-400 transition-colors duration-200;
 }
 
 .sidebar__delete:hover {
@@ -199,6 +199,6 @@ function navigate() {
 }
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  @apply opacity-0 translate-y-[6px];
+  @apply translate-y-[6px] opacity-0;
 }
 </style>

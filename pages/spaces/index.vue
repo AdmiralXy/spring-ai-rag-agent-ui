@@ -62,8 +62,8 @@ async function createSpace() {
 
     <ul v-if="loading" class="spaces__list">
       <li v-for="n in 3" :key="n" class="spaces__item">
-        <USkeleton class="h-5 w-32 rounded bg-gray-700/50 animate-pulse" />
-        <USkeleton class="h-5 w-6 rounded bg-gray-700/50 animate-pulse" />
+        <USkeleton class="h-5 w-32 animate-pulse rounded bg-gray-700/50" />
+        <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
       </li>
     </ul>
 
@@ -89,11 +89,11 @@ async function createSpace() {
 @import 'tailwindcss/theme';
 
 .spaces__create {
-  @apply flex flex-wrap gap-2 items-center mb-4 bg-[#1e1e1e] p-3 rounded-md w-full max-lg:grid max-lg:gap-2;
+  @apply mb-4 flex w-full flex-wrap items-center gap-2 rounded-md bg-[#1e1e1e] p-3 max-lg:grid max-lg:gap-2;
 }
 
 .spaces__input {
-  @apply flex-1 min-w-[200px] px-3 py-2 rounded-md border border-[#333] bg-[#111] text-white outline-none;
+  @apply min-w-[200px] flex-1 rounded-md border border-[#333] bg-[#111] px-3 py-2 text-white outline-none;
 }
 
 .spaces__input:focus {
@@ -101,11 +101,11 @@ async function createSpace() {
 }
 
 .spaces__list {
-  @apply flex-1 overflow-y-auto flex flex-col gap-2 pr-1 scroll-smooth;
+  @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
 }
 
 .spaces__item {
-  @apply flex justify-between items-center bg-[#1e1e1e] p-3 rounded-md cursor-pointer transition-colors duration-200;
+  @apply flex cursor-pointer items-center justify-between rounded-md bg-[#1e1e1e] p-3 transition-colors duration-200;
 }
 
 .spaces__item:hover {
@@ -121,7 +121,7 @@ async function createSpace() {
 }
 
 .spaces__delete {
-  @apply bg-transparent border-none text-gray-400 cursor-pointer text-[1.2rem] p-1 transition-colors duration-200;
+  @apply cursor-pointer border-none bg-transparent p-1 text-[1.2rem] text-gray-400 transition-colors duration-200;
 }
 
 .spaces__delete:hover {

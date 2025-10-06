@@ -88,19 +88,19 @@ async function handleSend(text: string) {
 @import 'tailwindcss/theme';
 
 .chat-area {
-  @apply flex flex-col flex-1 min-h-0 relative;
+  @apply relative flex min-h-0 flex-1 flex-col;
 }
 
 .chat-area__space-label {
-  @apply absolute top-4 left-1/2 -translate-x-1/2 text-xs text-gray-400 opacity-80 pointer-events-none;
+  @apply pointer-events-none absolute top-4 left-1/2 -translate-x-1/2 text-xs text-gray-400 opacity-80;
 }
 
 .chat-area__messages {
-  @apply flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-visible gap-4 px-4 pt-8 pb-4;
+  @apply flex min-h-0 flex-1 flex-col gap-4 overflow-x-visible overflow-y-auto px-4 pt-8 pb-4;
 }
 
 .empty-state {
-  @apply m-auto text-center text-gray-500 flex flex-col items-center opacity-80 select-none;
+  @apply m-auto flex flex-col items-center text-center text-gray-500 opacity-80 select-none;
 }
 
 .empty-state__icon {

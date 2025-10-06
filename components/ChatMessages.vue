@@ -47,7 +47,7 @@ const parts = computed(() => useMessageParts(props.content))
 @import 'tailwindcss/theme';
 
 .chat-message {
-  @apply px-4 py-2 max-w-[70%];
+  @apply max-w-[70%] px-4 py-2;
 }
 
 .chat-message--user {
@@ -59,22 +59,22 @@ const parts = computed(() => useMessageParts(props.content))
 }
 
 .chat-message__bubble {
-  @apply px-4 py-3 rounded-xl w-full max-w-full overflow-x-auto break-words;
+  @apply w-full max-w-full overflow-x-auto rounded-xl px-4 py-3 break-words;
 }
 
 .chat-message--user .chat-message__bubble {
-  @apply bg-[#323232d9] text-white rounded-t-xl rounded-bl-md;
+  @apply rounded-t-xl rounded-bl-md bg-[#323232d9] text-white;
 }
 .chat-message--assistant .chat-message__bubble {
-  @apply bg-[#1d1d1d] text-gray-200 border border-[#3a3a3a] rounded-t-xl rounded-br-md;
+  @apply rounded-t-xl rounded-br-md border border-[#3a3a3a] bg-[#1d1d1d] text-gray-200;
 }
 
 .chat-message__text {
-  @apply whitespace-pre-wrap break-words text-[0.95rem] leading-snug;
+  @apply text-[0.95rem] leading-snug break-words whitespace-pre-wrap;
 }
 
 .chat-message__heading {
-  @apply font-bold leading-tight mt-4 mb-1 text-gray-200 whitespace-pre-wrap break-words;
+  @apply mt-4 mb-1 leading-tight font-bold break-words whitespace-pre-wrap text-gray-200;
 }
 .chat-message__heading--l1 {
   @apply text-xl;
@@ -92,13 +92,13 @@ const parts = computed(() => useMessageParts(props.content))
 }
 
 :deep(.code-wrapper) {
-  @apply max-sm:max-w-[68vw] max-md:max-w-[83vw] overflow-x-auto;
+  @apply overflow-x-auto max-md:max-w-[83vw] max-sm:max-w-[68vw];
 }
 :deep(.code-block) {
   @apply max-w-full overflow-x-auto;
 }
 :deep(.code-block code) {
-  @apply inline-block min-w-full max-w-[max-content];
+  @apply inline-block max-w-[max-content] min-w-full;
 }
 
 @media (max-width: theme('screens.lg')) {

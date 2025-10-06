@@ -153,8 +153,8 @@ function getDocStyle(meta: RagDocumentMetadata) {
 
     <ul v-if="loading" class="space__list">
       <li v-for="n in 3" :key="n" class="space__item">
-        <USkeleton class="h-5 w-48 rounded bg-gray-700/50 animate-pulse" />
-        <USkeleton class="h-5 w-6 rounded bg-gray-700/50 animate-pulse" />
+        <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
+        <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
       </li>
     </ul>
 
@@ -193,7 +193,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
 @import 'tailwindcss/theme';
 
 :deep(.space__back) {
-  @apply flex items-center justify-center w-8 h-8 rounded-full bg-[#2a2a2a] text-white cursor-pointer transition-colors duration-200;
+  @apply flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#2a2a2a] text-white transition-colors duration-200;
 }
 
 .space__back:hover {
@@ -201,38 +201,38 @@ function getDocStyle(meta: RagDocumentMetadata) {
 }
 
 .space__create {
-  @apply flex flex-col gap-3 bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 rounded-xl shadow-md mb-5 border border-[#333];
+  @apply mb-5 flex flex-col gap-3 rounded-xl border border-[#333] bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 shadow-md;
 }
 
 .space__input {
-  @apply flex-1 px-4 py-3 rounded-md border border-[#333] bg-[#111] text-white outline-none resize-y transition-all duration-200;
+  @apply flex-1 resize-y rounded-md border border-[#333] bg-[#111] px-4 py-3 text-white transition-all duration-200 outline-none;
 }
 .space__input:focus {
   @apply border-blue-500 ring-2 ring-blue-500/30;
 }
 
 .space__create-actions {
-  @apply flex flex-wrap justify-between items-center gap-2;
+  @apply flex flex-wrap items-center justify-between gap-2;
 }
 
 .space__batching {
-  @apply text-gray-400 text-sm;
+  @apply text-sm text-gray-400;
 }
 
 .space__progress {
   @apply mb-4;
 }
 .space__progress-text {
-  @apply mt-1 text-xs text-gray-400 text-right;
+  @apply mt-1 text-right text-xs text-gray-400;
 }
 
 .space__list {
-  @apply flex-1 overflow-y-auto flex flex-col gap-2 pr-1 scroll-smooth;
+  @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
   min-height: 50vh;
 }
 
 .space__item {
-  @apply relative flex flex-col bg-[#1e1e1e] p-4 rounded-md transition-colors duration-200;
+  @apply relative flex flex-col rounded-md bg-[#1e1e1e] p-4 transition-colors duration-200;
 }
 .space__item:hover {
   @apply bg-[#2a2a2a];
@@ -243,20 +243,20 @@ function getDocStyle(meta: RagDocumentMetadata) {
 }
 
 .space__label {
-  @apply text-xs font-bold text-black px-2 py-1 rounded;
+  @apply rounded px-2 py-1 text-xs font-bold text-black;
 }
 
 .space__content {
-  @apply flex-1 mt-9 pr-8 text-white break-words;
+  @apply mt-9 flex-1 pr-8 break-words text-white;
 }
 
 .space__actions {
-  @apply flex justify-end mt-2;
+  @apply mt-2 flex justify-end;
 }
 
 .space__delete,
 .space__delete-all {
-  @apply bg-transparent border-none cursor-pointer text-xl p-1 text-gray-400 transition-colors duration-200;
+  @apply cursor-pointer border-none bg-transparent p-1 text-xl text-gray-400 transition-colors duration-200;
 }
 .space__delete:hover {
   @apply text-red-500;
@@ -271,7 +271,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
 }
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  @apply opacity-0 translate-y-3;
+  @apply translate-y-3 opacity-0;
 }
 
 .fade-enter-active,

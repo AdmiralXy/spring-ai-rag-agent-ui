@@ -14,7 +14,7 @@ const { isOpen, title, subtitle, confirmYes, confirmNo } = useConfirmDialog()
       <p class="text-sm text-neutral-400">{{ subtitle }}</p>
     </template>
     <template #footer>
-      <div class="flex justify-end gap-2 w-full">
+      <div class="flex w-full justify-end gap-2">
         <UButton variant="solid" @click="confirmYes">Confirm</UButton>
         <UButton color="neutral" variant="solid" @click="confirmNo">Cancel</UButton>
       </div>

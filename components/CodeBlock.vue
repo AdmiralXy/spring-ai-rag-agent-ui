@@ -73,7 +73,7 @@ async function copy() {
 @import 'tailwindcss/theme';
 
 .code-wrapper {
-  @apply relative my-4 border border-[#2a2a2a] rounded-lg bg-[#171717] shadow-md max-w-[100%];
+  @apply relative my-4 max-w-[100%] rounded-lg border border-[#2a2a2a] bg-[#171717] shadow-md;
   animation: codeEnter 0.3s ease;
 }
 
@@ -89,14 +89,14 @@ async function copy() {
 }
 
 .copy-btn {
-  @apply absolute top-1 right-1 text-xs bg-white/10 text-gray-100 border-none rounded px-2 py-1 cursor-pointer transition-colors duration-200 z-10;
+  @apply absolute top-1 right-1 z-10 cursor-pointer rounded border-none bg-white/10 px-2 py-1 text-xs text-gray-100 transition-colors duration-200;
 }
 .copy-btn:hover {
   @apply bg-white/20;
 }
 
 .code-block {
-  @apply bg-transparent text-[#f8f8f2] m-0 p-4 font-mono text-sm leading-relaxed whitespace-pre;
+  @apply m-0 bg-transparent p-4 font-mono text-sm leading-relaxed whitespace-pre text-[#f8f8f2];
   display: block;
   width: 100%;
   max-width: 100%;
