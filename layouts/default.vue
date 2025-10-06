@@ -45,6 +45,7 @@ body {
 
 .layout {
   @apply flex h-screen bg-[#212121];
+  font-family: 'Noto Sans', sans-serif;
 }
 
 .layout__main {

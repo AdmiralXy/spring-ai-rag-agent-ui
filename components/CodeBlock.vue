@@ -97,6 +97,7 @@ async function copy() {
 
 .code-block {
   @apply m-0 bg-transparent p-4 font-mono text-sm leading-relaxed whitespace-pre text-[#f8f8f2];
+  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
   display: block;
   width: 100%;
   max-width: 100%;
