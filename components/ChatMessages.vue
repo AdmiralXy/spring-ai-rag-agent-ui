@@ -44,69 +44,69 @@ const parts = computed(() => useMessageParts(props.content))
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .chat-message {
-  max-width: 70%;
-  padding: 0.5rem 1rem;
+  @apply px-4 py-2 max-w-[70%];
 }
 
 .chat-message--user {
-  margin-left: auto;
+  @apply ml-auto;
 }
+
 .chat-message--assistant {
-  margin-right: auto;
+  @apply mr-auto;
 }
 
 .chat-message__bubble {
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
+  @apply px-4 py-3 rounded-xl w-full max-w-full overflow-x-auto break-words;
 }
 
 .chat-message--user .chat-message__bubble {
-  background: #323232d9;
-  color: #ffffff;
-  border-radius: 0.75rem 0.75rem 0.25rem 0.75rem;
+  @apply bg-[#323232d9] text-white rounded-t-xl rounded-bl-md;
 }
-
 .chat-message--assistant .chat-message__bubble {
-  background: #1d1d1d;
-  color: rgb(var(--ui-text, 234, 234, 234));
-  border: 1px solid #3a3a3a;
-  border-radius: 0.75rem 0.75rem 0.75rem 0.25rem;
+  @apply bg-[#1d1d1d] text-gray-200 border border-[#3a3a3a] rounded-t-xl rounded-br-md;
 }
 
 .chat-message__text {
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  font-size: 0.95rem;
-  line-height: 1.4;
+  @apply whitespace-pre-wrap break-words text-[0.95rem] leading-snug;
 }
 
 .chat-message__heading {
-  font-weight: 700;
-  line-height: 1.25;
-  margin: 1rem 0 0.35rem;
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  color: #eaeaea;
+  @apply font-bold leading-tight mt-4 mb-1 text-gray-200 whitespace-pre-wrap break-words;
 }
-
 .chat-message__heading--l1 {
-  font-size: 1.25rem;
+  @apply text-xl;
 }
-
 .chat-message__heading--l2 {
-  font-size: 1.15rem;
+  @apply text-lg;
 }
-
 .chat-message__heading--l3 {
-  font-size: 1.08rem;
+  @apply text-base;
 }
-
 .chat-message__heading--l4,
 .chat-message__heading--l5,
 .chat-message__heading--l6 {
-  font-size: 1.02rem;
+  @apply text-sm;
+}
+
+:deep(.code-wrapper) {
+  @apply max-sm:max-w-[68vw] max-md:max-w-[83vw] overflow-x-auto;
+}
+:deep(.code-block) {
+  @apply max-w-full overflow-x-auto;
+}
+:deep(.code-block code) {
+  @apply inline-block min-w-full max-w-[max-content];
+}
+
+@media (max-width: theme('screens.lg')) {
+  .chat-message {
+    @apply w-full max-w-full;
+  }
+  .chat-message__bubble {
+    @apply w-full max-w-full overflow-x-auto;
+  }
 }
 </style>

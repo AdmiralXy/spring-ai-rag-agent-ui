@@ -96,7 +96,7 @@ async function handleSend(text: string) {
 }
 
 .chat-area__messages {
-  @apply flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 px-4 pt-8 pb-4;
+  @apply flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-visible gap-4 px-4 pt-8 pb-4;
 }
 
 .empty-state {

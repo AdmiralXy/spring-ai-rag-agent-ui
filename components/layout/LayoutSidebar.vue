@@ -139,6 +139,8 @@ function navigate() {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .sidebar {
   @apply flex flex-col h-full bg-[#181818] max-lg:mt-[3.5rem];
 }

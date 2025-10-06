@@ -70,16 +70,13 @@ async function copy() {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .code-wrapper {
-  position: relative;
-  margin: 1rem 0;
-  border: 1px solid #2a2a2a;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background-color: #171717;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  @apply relative my-4 border border-[#2a2a2a] rounded-lg bg-[#171717] shadow-md max-w-[100%];
   animation: codeEnter 0.3s ease;
 }
+
 @keyframes codeEnter {
   from {
     opacity: 0;
@@ -90,40 +87,38 @@ async function copy() {
     transform: translateY(0);
   }
 }
+
 .copy-btn {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  font-size: 0.75rem;
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #f8f8f2;
-  border: none;
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  z-index: 5;
+  @apply absolute top-1 right-1 text-xs bg-white/10 text-gray-100 border-none rounded px-2 py-1 cursor-pointer transition-colors duration-200 z-10;
 }
 .copy-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  @apply bg-white/20;
 }
+
 .code-block {
-  background: transparent;
-  color: #f8f8f2;
-  margin: 0;
-  padding: 1rem;
+  @apply bg-transparent text-[#f8f8f2] m-0 p-4 font-mono text-sm leading-relaxed whitespace-pre;
+  display: block;
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
-  font-family: 'Fira Code', 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  white-space: pre;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
+
 .code-block code {
+  display: inline-block;
+  min-width: 100%;
+  max-width: none;
+  width: max-content;
+  box-sizing: border-box;
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
   background: none;
   color: inherit;
-  display: block;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 </style>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import SidebarContainer from '~/components/layout/SidebarContainer.vue'
 
-useHead({ title: 'Agent' })
+useHead({
+  title: 'Agent',
+  meta: [{ name: 'theme-color', content: '#212121' }]
+})
 </script>
 
 <template>
@@ -34,6 +37,10 @@ useHead({ title: 'Agent' })
 }
 *::-webkit-scrollbar-track {
   background: transparent;
+}
+
+body {
+  @apply bg-[#212121];
 }
 
 .layout {
