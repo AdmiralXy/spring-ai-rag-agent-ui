@@ -36,11 +36,9 @@ function goBack() {
 
 async function addText() {
   if (!newText.value.trim() || uploading.value) return
-
   uploading.value = true
   progress.value = 0
   let lastFetchAt = 0
-
   try {
     await ragStore.addDocumentStream(
       spaceId,
@@ -192,62 +190,34 @@ function getDocStyle(meta: RagDocumentMetadata) {
 <style scoped>
 @import 'tailwindcss/theme';
 
-:deep(.space__back) {
-  @apply flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[#2a2a2a] text-white transition-colors duration-200;
-}
-
-.space__back:hover {
-  @apply bg-[#3b3b3b];
-}
-
-.space__create {
-  @apply mb-5 flex flex-col gap-3 rounded-xl border border-[#333] bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 shadow-md;
-}
-
-.space__input {
-  @apply flex-1 resize-y rounded-md border border-[#333] bg-[#111] px-4 py-3 text-white transition-all duration-200 outline-none;
-}
-.space__input:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
-}
-
-.space__create-actions {
-  @apply flex flex-wrap items-center justify-between gap-2;
-}
-
-.space__batching {
-  @apply text-sm text-gray-400;
-}
-
-.space__progress {
-  @apply mb-4;
-}
-.space__progress-text {
-  @apply mt-1 text-right text-xs text-gray-400;
-}
-
 .space__list {
   @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
+  overflow-x: hidden;
   min-height: 50vh;
 }
 
 .space__item {
   @apply relative flex flex-col rounded-md bg-[#1e1e1e] p-4 transition-colors duration-200;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .space__item:hover {
   @apply bg-[#2a2a2a];
 }
 
+.space__content {
+  @apply mt-9 flex-1 pr-8 break-words whitespace-pre-wrap text-white;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
 .space__doc-label {
   @apply absolute top-2 right-2 flex items-center gap-1;
 }
-
 .space__label {
   @apply rounded px-2 py-1 text-xs font-bold text-black;
-}
-
-.space__content {
-  @apply mt-9 flex-1 pr-8 break-words text-white;
 }
 
 .space__actions {
@@ -265,6 +235,30 @@ function getDocStyle(meta: RagDocumentMetadata) {
   @apply text-amber-500;
 }
 
+.space__create {
+  @apply mb-5 flex flex-col gap-3 rounded-xl border border-[#333] bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 shadow-md;
+}
+.space__input {
+  @apply flex-1 resize-y rounded-md border border-[#333] bg-[#111] px-4 py-3 text-white transition-all duration-200 outline-none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.space__input:focus {
+  @apply border-blue-500 ring-2 ring-blue-500/30;
+}
+.space__create-actions {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+.space__batching {
+  @apply text-sm text-gray-400;
+}
+.space__progress {
+  @apply mb-4;
+}
+.space__progress-text {
+  @apply mt-1 text-right text-xs text-gray-400;
+}
+
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   @apply transition-all duration-300 ease-in-out;
@@ -273,7 +267,6 @@ function getDocStyle(meta: RagDocumentMetadata) {
 .slide-fade-leave-to {
   @apply translate-y-3 opacity-0;
 }
-
 .fade-enter-active,
 .fade-leave-active {
   @apply transition-opacity duration-300 ease-in-out;
