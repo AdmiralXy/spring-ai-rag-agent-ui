@@ -149,65 +149,78 @@ function getDocStyle(meta: RagDocumentMetadata) {
       </div>
     </transition>
 
-    <ul v-if="loading" class="space__list">
-      <li v-for="n in 3" :key="n" class="space__item">
-        <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
-        <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
-      </li>
-    </ul>
+    <!-- ✅ Контейнер со скроллом -->
+    <div class="space__scroll-container">
+      <ul v-if="loading" class="space__list">
+        <li v-for="n in 3" :key="n" class="space__item">
+          <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
+          <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
+        </li>
+      </ul>
 
-    <ul v-else class="space__list">
-      <li v-for="doc in ragStore.getDocsBySpace(spaceId)" :key="doc.id" class="space__item">
-        <div class="space__doc-label">
-          <span class="space__label" :style="{ backgroundColor: getDocStyle(doc.metadata).color }">
-            {{ getDocStyle(doc.metadata).label }}
-          </span>
-          <button
-            class="space__delete-all"
-            title="Delete all chunks"
-            @click="deleteDocument(doc.metadata.doc)"
-          >
-            <Icon name="material-symbols:delete-forever-outline" />
-          </button>
-        </div>
+      <ul v-else class="space__list">
+        <li v-for="doc in ragStore.getDocsBySpace(spaceId)" :key="doc.id" class="space__item">
+          <div class="space__doc-label">
+            <span
+              class="space__label"
+              :style="{ backgroundColor: getDocStyle(doc.metadata).color }"
+            >
+              {{ getDocStyle(doc.metadata).label }}
+            </span>
+            <button
+              class="space__delete-all"
+              title="Delete all chunks"
+              @click="deleteDocument(doc.metadata.doc)"
+            >
+              <Icon name="material-symbols:delete-forever-outline" />
+            </button>
+          </div>
 
-        <span class="space__content">{{ doc.content }}</span>
+          <span class="space__content">{{ doc.content }}</span>
 
-        <div class="space__actions">
-          <button
-            class="space__delete"
-            title="Delete chunk"
-            @click="deleteText(doc.metadata.doc, doc.metadata.chunk)"
-          >
-            <Icon name="material-symbols:delete-outline" />
-          </button>
-        </div>
-      </li>
-    </ul>
+          <div class="space__actions">
+            <button
+              class="space__delete"
+              title="Delete chunk"
+              @click="deleteText(doc.metadata.doc, doc.metadata.chunk)"
+            >
+              <Icon name="material-symbols:delete-outline" />
+            </button>
+          </div>
+        </li>
+      </ul>
+    </div>
   </LayoutWrapper>
 </template>
 
 <style scoped>
 @import 'tailwindcss/theme';
 
+.space__scroll-container {
+  @apply mt-4 flex-1 overflow-x-hidden overflow-y-auto;
+  max-height: calc(100vh - 280px);
+  padding-right: 0.25rem;
+  scroll-behavior: smooth;
+}
+
 .space__list {
-  @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
+  @apply flex flex-col gap-2;
   overflow-x: hidden;
-  min-height: 50vh;
+  max-width: 100%;
 }
 
 .space__item {
   @apply relative flex flex-col rounded-md bg-[#1e1e1e] p-4 transition-colors duration-200;
-  max-width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
+  max-width: 100%;
 }
 .space__item:hover {
   @apply bg-[#2a2a2a];
 }
 
 .space__content {
-  @apply mt-9 flex-1 pr-8 break-words whitespace-pre-wrap text-white;
+  @apply mt-9 flex-1 pr-8 text-sm leading-snug break-words whitespace-pre-wrap text-white;
   word-break: break-word;
   overflow-wrap: anywhere;
   max-width: 100%;
