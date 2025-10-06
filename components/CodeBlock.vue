@@ -73,7 +73,7 @@ async function copy() {
 @import 'tailwindcss/theme';
 
 .code-wrapper {
-  @apply relative my-4 w-full max-w-full rounded-lg border border-[#2a2a2a] bg-[#171717] shadow-md;
+  @apply relative my-4 w-full max-w-full overflow-x-hidden rounded-lg border border-[#2a2a2a] bg-[#171717] shadow-md;
 }
 
 .copy-btn {
@@ -81,7 +81,7 @@ async function copy() {
 }
 
 .code-block {
-  @apply m-0 bg-transparent p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap text-[#f8f8f2];
+  @apply m-0 w-full max-w-full overflow-x-hidden bg-transparent p-4 font-mono text-sm leading-relaxed break-words whitespace-pre-wrap text-[#f8f8f2];
   display: block;
   width: 100%;
   max-width: 100%;
@@ -91,6 +91,7 @@ async function copy() {
 }
 
 .code-block code {
+  @apply block w-full max-w-full break-words whitespace-pre-wrap;
   display: block;
   width: 100%;
   max-width: 100%;
@@ -99,9 +100,9 @@ async function copy() {
   font-size: inherit;
   line-height: inherit;
   white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
   background: none;
   color: inherit;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 </style>

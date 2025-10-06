@@ -69,16 +69,4 @@ const parts = computed(() => useMessageParts(props.content))
 .chat-message__text {
   @apply text-[0.95rem] leading-snug break-words whitespace-pre-wrap;
 }
-
-:deep(.code-wrapper) {
-  @apply w-full max-w-full overflow-x-hidden;
-}
-:deep(.code-block) {
-  @apply w-full max-w-full overflow-x-hidden break-words whitespace-pre-wrap;
-}
-:deep(.code-block code) {
-  @apply block w-full max-w-full break-words whitespace-pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
 </style>
