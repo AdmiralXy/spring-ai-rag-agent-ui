@@ -58,47 +58,58 @@ export const useChatsStore = defineStore('chats', {
     /** Send message */
     async sendMessage(chatId: string, payload: { text: string }) {
       this.loading = true
-      try {
-        if (!this.messages[chatId]) {
-          this.messages = { ...this.messages, [chatId]: [] }
-        }
+      if (!this.messages[chatId]) {
+        this.messages = { ...this.messages, [chatId]: [] }
+      }
 
-        this.messages[chatId]?.push({ role: 'USER', content: payload.text })
+      this.messages[chatId]?.push({ role: 'USER', content: payload.text })
+      this.messages[chatId]?.push({ role: 'ASSISTANT', content: '...' })
 
-        this.messages[chatId]?.push({ role: 'ASSISTANT', content: '...' })
+      const url = `${useRuntimeConfig().public.apiBase}/chats/${chatId}/stream`
 
-        const url = `${useRuntimeConfig().public.apiBase}/chats/${chatId}/stream?text=${encodeURIComponent(
-          payload.text
-        )}`
-        const eventSource = new EventSource(url)
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: payload.text })
+      })
 
-        eventSource.onmessage = (e) => {
-          if (e.data === '[DONE]') {
-            eventSource.close()
-            this.loading = false
-            return
-          }
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let assistantText = ''
+
+      while (true) {
+        const { done, value } = await reader!.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
+
+        for (const part of parts) {
+          const lines = part
+            .split('\n')
+            .filter((l) => l.startsWith('data:'))
+            .map((l) => l.replace(/^data:\s?/, ''))
+            .join('\n')
+
+          if (!lines || lines === '[DONE]') continue
+
+          assistantText = lines.trim()
 
           const msgs = this.messages[chatId]
-          if (!msgs) return
+          if (!msgs) continue
           const lastIdx = msgs.length - 1
-          const last = msgs[lastIdx]
 
-          if (last?.role === 'ASSISTANT') {
-            this.messages[chatId]?.splice(lastIdx, 1, {
-              role: 'ASSISTANT',
-              content: e.data
-            })
-          }
+          this.messages[chatId]?.splice(lastIdx, 1, {
+            role: 'ASSISTANT',
+            content: assistantText
+          })
         }
-
-        eventSource.onerror = () => {
-          eventSource.close()
-          this.loading = false
-        }
-      } finally {
-        /* пусто */
       }
+
+      this.loading = false
     },
 
     /** Get chat history */
