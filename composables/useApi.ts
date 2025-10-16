@@ -51,10 +51,18 @@ export function useApi() {
   ): Promise<TResponse> => request<TResponse>(url, { method: 'POST', body, ...opts })
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const patch = <TResponse>(
+    url: NitroFetchRequest,
+    body?: any,
+    opts?: NitroFetchOptions<NitroFetchRequest>
+  ): Promise<TResponse> => request<TResponse>(url, { method: 'PATCH', body, ...opts })
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
   const del = <T>(
     url: NitroFetchRequest,
     opts?: NitroFetchOptions<NitroFetchRequest>
   ): Promise<T> => request<T>(url, { method: 'DELETE', ...opts })
 
-  return { get, post, del }
+  return { get, post, patch, del }
 }

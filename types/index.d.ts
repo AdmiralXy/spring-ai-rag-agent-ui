@@ -2,6 +2,15 @@
 /* eslint-disable */
 
 declare global {
+  export interface ModelInfoRs {
+    label: string
+    value: string
+  }
+
+  export interface ModelsListRs {
+    models: ModelInfoRs[]
+  }
+
   export interface CreateChatRq {
     ragSpace: string
   }
@@ -25,6 +34,7 @@ declare global {
 
   export interface CreateChatRs {
     chatId: string
+    modelName: string
     title: string
   }
 
@@ -75,6 +85,7 @@ declare global {
   export interface Chat {
     id: string
     title: string
+    modelName: string
     ragSpace: string
   }
 

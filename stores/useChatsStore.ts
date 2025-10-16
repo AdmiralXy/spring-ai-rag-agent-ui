@@ -42,6 +42,7 @@ export const useChatsStore = defineStore('chats', {
         const chat: Chat = {
           id: res.chatId,
           title: res.title,
+          modelName: res.modelName,
           ragSpace: payload.ragSpace
         }
 
@@ -56,7 +57,7 @@ export const useChatsStore = defineStore('chats', {
     },
 
     /** Send message */
-    async sendMessage(chatId: string, payload: { text: string }) {
+    async sendMessage(chatId: string, payload: { modelName: string; text: string }) {
       this.loading = true
       if (!this.messages[chatId]) {
         this.messages = { ...this.messages, [chatId]: [] }
@@ -70,7 +71,7 @@ export const useChatsStore = defineStore('chats', {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: payload.text })
+        body: JSON.stringify({ ...payload })
       })
 
       const reader = response.body?.getReader()
@@ -136,6 +137,22 @@ export const useChatsStore = defineStore('chats', {
 
         const { [chatId]: removed, ...rest } = this.messages
         this.messages = rest
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /** Update model for chat */
+    async updateModelName(chatId: string, modelAlias: string) {
+      this.loading = true
+      try {
+        const api = useApi()
+        await api.patch(`/chats/${chatId}/model`, { modelAlias })
+
+        const chat = this.chats.find((c) => c.id === chatId)
+        if (chat) {
+          chat.modelName = modelAlias
+        }
       } finally {
         this.loading = false
       }

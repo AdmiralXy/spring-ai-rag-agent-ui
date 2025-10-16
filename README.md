@@ -7,8 +7,8 @@
   <a href="https://github.com/AdmiralXy/spring-ai-rag-agent-ui">
     <img src="https://img.shields.io/badge/UI-8A2BE2?style=for-the-badge">
   </a>
-  <a href="https://github.com/AdmiralXy/spring-ai-rag-agent-deploy">
-    <img src="https://img.shields.io/badge/Deployment-FE7D37?style=for-the-badge">
+  <a href="https://github.com/AdmiralXy/spring-ai-rag-agent-docker">
+    <img src="https://img.shields.io/badge/Launch%20in%20Docker-FE7D37?style=for-the-badge">
   </a>
 </p>
 

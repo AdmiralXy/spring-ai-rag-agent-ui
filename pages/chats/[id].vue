@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import ChatMessages from '~/components/ChatMessages.vue'
 import ChatInput from '~/components/ChatInput.vue'
 
@@ -17,6 +17,21 @@ const currentChat = computed(() => chatsStore.activeChat)
 const currentSpace = computed(() =>
   currentChat.value ? spacesStore.getById(currentChat.value.ragSpace) : null
 )
+
+const modelsStore = useModelsStore()
+await useAsyncData('models', async () => {
+  await modelsStore.fetchModels()
+  return modelsStore.models
+})
+
+const models = modelsStore.models
+const selectedModel = ref(models.find((m) => m.value === currentChat.value?.modelName) || models[0])
+
+watch(currentChat, (newChat) => {
+  if (!newChat) return
+  const found = models.find((m) => m.value === newChat.modelName)
+  selectedModel.value = found || models[0]
+})
 
 async function scrollToBottom(smooth = false) {
   await nextTick()
@@ -48,7 +63,18 @@ onMounted(async () => {
 
 async function handleSend(text: string) {
   if (!text.trim()) return
-  await chatsStore.sendMessage(chatId, { text })
+
+  const selected = selectedModel.value?.value as string
+  const current = currentChat.value?.modelName
+
+  if (!current || current !== selected) {
+    await chatsStore.updateModelName(chatId, selected)
+  }
+
+  await chatsStore.sendMessage(chatId, {
+    modelName: selected,
+    text
+  })
 }
 </script>
 
@@ -56,6 +82,23 @@ async function handleSend(text: string) {
   <div class="chat-area">
     <client-only>
       <div v-if="currentSpace" class="chat-area__space-label">Space: {{ currentSpace.name }}</div>
+      <div class="chat-area__model-input">
+        <USelectMenu
+          v-model="selectedModel"
+          :items="models"
+          option-attribute="label"
+          value-attribute="value"
+          placeholder="Model"
+          :ui="{
+            base: 'mx-18 lg:mx-4 my-1 max-w-[14rem] min-w-[10rem] md:max-w-[18rem] lg:max-w-[22rem] bg-[#2a2a2a] text-white border border-[#474747]',
+            content: 'bg-[#2a2a2a] text-white',
+            item: 'bg-[#272727] border border-[#474747]',
+            input: 'bg-[#2a2a2a] text-white text-sm py-0.5 px-2 rounded-md',
+            placeholder: 'text-gray-300',
+            value: 'text-white text-sm'
+          }"
+        />
+      </div>
     </client-only>
 
     <div ref="messagesContainer" class="chat-area__messages">
@@ -79,7 +122,9 @@ async function handleSend(text: string) {
     </div>
 
     <div class="chat-area__footer">
-      <ChatInput :loading="chatsStore.loading" @send="handleSend" />
+      <client-only>
+        <ChatInput :loading="chatsStore.loading" @send="handleSend" />
+      </client-only>
     </div>
   </div>
 </template>
@@ -106,5 +151,9 @@ async function handleSend(text: string) {
 
 .chat-area__footer {
   @apply p-3;
+}
+
+.chat-area__model-input {
+  margin: 1rem 1rem;
 }
 </style>
