@@ -11,10 +11,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set image tag (timestamp)
+      - name: Set image tag
         id: set-tag
         run: |
-          IMAGE_TAG="${{ vars.DOCKER_REGISTRY }}/${{ vars.ORGANIZATION }}/${{ vars.DOCKER_IMAGE_NAME }}:$(date +%s)"
+          IMAGE_NAME="${{ vars.DOCKER_REGISTRY }}/${{ vars.ORGANIZATION }}/${{ vars.DOCKER_IMAGE_NAME }}"
+          IMAGE_TAG="${IMAGE_NAME}:$(date +%s)"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
@@ -28,5 +30,8 @@ jobs:
           username: ${{ secrets.GPR_USER }}
           password: ${{ secrets.GPR_KEY }}
 
-      - name: Push Docker image
-        run: docker push "${IMAGE_TAG}"
+      - name: Push Docker image (versioned + latest)
+        run: |
+          docker push "${IMAGE_TAG}"
+          docker tag "${IMAGE_TAG}" "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:latest"
