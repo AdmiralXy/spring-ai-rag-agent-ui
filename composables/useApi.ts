@@ -4,7 +4,9 @@ import useNotification from '~/composables/useNotification'
 
 export function useApi() {
   const config = useRuntimeConfig()
-  const baseURL = config.public.apiBase
+  const baseURL = import.meta.server
+    ? (config.apiBase as string)
+    : (config.public.apiBase as string)
   const { notify } = useNotification()
 
   async function request<T>(

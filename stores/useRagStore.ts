@@ -34,14 +34,16 @@ export const useRagStore = defineStore('rag', {
       payload: AddToSpaceRq,
       onProgress: (p: number) => void
     ) {
-      const res = await fetch(
-        `${useRuntimeConfig().public.apiBase}/rag/${spaceId}/documents/stream`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }
-      )
+      const config = useRuntimeConfig()
+      const baseURL = import.meta.server
+        ? (config.apiBase as string)
+        : (config.public.apiBase as string)
+
+      const res = await fetch(`${baseURL}/rag/${spaceId}/documents/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
 
       if (!res.body) return
 

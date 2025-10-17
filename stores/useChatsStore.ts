@@ -58,6 +58,11 @@ export const useChatsStore = defineStore('chats', {
 
     /** Send message */
     async sendMessage(chatId: string, payload: { modelName: string; text: string }) {
+      const config = useRuntimeConfig()
+      const baseURL = import.meta.server
+        ? (config.apiBase as string)
+        : (config.public.apiBase as string)
+
       this.loading = true
       if (!this.messages[chatId]) {
         this.messages = { ...this.messages, [chatId]: [] }
@@ -66,7 +71,7 @@ export const useChatsStore = defineStore('chats', {
       this.messages[chatId]?.push({ role: 'USER', content: payload.text })
       this.messages[chatId]?.push({ role: 'ASSISTANT', content: '...' })
 
-      const url = `${useRuntimeConfig().public.apiBase}/chats/${chatId}/stream`
+      const url = `${baseURL}/chats/${chatId}/stream`
 
       const response = await fetch(url, {
         method: 'POST',
