@@ -64,6 +64,9 @@ onMounted(async () => {
 async function handleSend(text: string) {
   if (!text.trim()) return
 
+  const isFirstMessageInChat = chatsStore.activeMessages.length === 0
+  const previousTitle = currentChat.value?.title
+
   const selected = selectedModel.value?.value as string
   const current = currentChat.value?.modelName
 
@@ -75,6 +78,16 @@ async function handleSend(text: string) {
     modelName: selected,
     text
   })
+
+  if (isFirstMessageInChat) {
+    await chatsStore.fetchChats(10000)
+
+    const updatedTitle = chatsStore.chats.find((chat) => chat.id === chatId)?.title
+    if (previousTitle && updatedTitle === previousTitle) {
+      await new Promise((resolve) => setTimeout(resolve, 600))
+      await chatsStore.fetchChats(10000)
+    }
+  }
 }
 </script>
 
