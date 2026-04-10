@@ -9,6 +9,7 @@ interface ProviderOption {
 
 const props = defineProps<{
   modelValue: UploadProvider
+  items?: ProviderOption[]
   disabled?: boolean
 }>()
 
@@ -16,8 +17,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: UploadProvider]
 }>()
 
-const options: ProviderOption[] = [
-  { value: 'text', label: 'Content', icon: 'material-symbols:text-snippet-outline-rounded' },
+const defaultOptions: ProviderOption[] = [
+  { value: 'text', label: 'Text', icon: 'material-symbols:text-snippet-outline-rounded' },
   { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
   { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' }
 ]
@@ -31,7 +32,7 @@ function selectProvider(value: UploadProvider) {
 <template>
   <div class="space-provider-selector">
     <button
-      v-for="option in options"
+      v-for="option in props.items ?? defaultOptions"
       :key="option.value"
       type="button"
       class="space-provider-selector__button"

@@ -2,10 +2,13 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import ChatMessages from '~/components/ChatMessages.vue'
 import ChatInput from '~/components/ChatInput.vue'
+import useNotification from '~/composables/useNotification'
+import { NotificationType } from '~/types/notification'
 
 const router = useRouter()
 const chatsStore = useChatsStore()
 const spacesStore = useSpacesStore()
+const { notify } = useNotification()
 
 const chatId = router.currentRoute.value.params.id as string
 chatsStore.activeChatId = chatId
@@ -61,8 +64,31 @@ onMounted(async () => {
   await scrollToBottom(false)
 })
 
-async function handleSend(text: string) {
-  if (!text.trim()) return
+async function buildMessageWithFiles(text: string, files: File[]) {
+  if (!files.length) return text.trim()
+
+  try {
+    const fileBlocks = await Promise.all(
+      files.map(async (file) => {
+        const rawContent = await file.text()
+        const content = rawContent.trim() || '[empty file]'
+        return `File "${file.name}" uploaded by the user. Content:\n${content}`
+      })
+    )
+
+    return [...fileBlocks, text.trim()].filter(Boolean).join('\n\n')
+  } catch {
+    notify({
+      type: NotificationType.ERROR,
+      message: 'Failed to read the selected files'
+    })
+    return ''
+  }
+}
+
+async function handleSend(payload: { text: string; files: File[] }) {
+  const text = await buildMessageWithFiles(payload.text, payload.files)
+  if (!text) return
 
   const isFirstMessageInChat = chatsStore.activeMessages.length === 0
   const previousTitle = currentChat.value?.title

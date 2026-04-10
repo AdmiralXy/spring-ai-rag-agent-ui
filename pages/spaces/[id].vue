@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
@@ -10,11 +10,17 @@ import SpaceFileDropzone from '~/components/spaces/SpaceFileDropzone.vue'
 import SpaceProviderSelector from '~/components/spaces/SpaceProviderSelector.vue'
 
 type UploadProvider = 'text' | 'files' | 'confluence'
+type ProviderOption = {
+  value: UploadProvider
+  label: string
+  icon: string
+}
 
 const route = useRoute()
 const router = useRouter()
 const { confirm } = useConfirmDialog()
 const { notify } = useNotification()
+const config = useRuntimeConfig()
 const spacesStore = useSpacesStore()
 const ragStore = useRagStore()
 const { loading } = storeToRefs(ragStore)
@@ -30,7 +36,42 @@ const uploading = ref(false)
 const progress = ref(0)
 const creating = ref(false)
 
+const providerOptions: ProviderOption[] = [
+  { value: 'text', label: 'Text', icon: 'material-symbols:text-snippet-outline-rounded' },
+  { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
+  { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' }
+]
+
+const availableProviders = computed<UploadProvider[]>(() => {
+  const raw = String(config.public.spaceUploadProviders ?? '').trim()
+  if (!raw) {
+    return providerOptions.map((option) => option.value)
+  }
+
+  const allowed = new Set(providerOptions.map((option) => option.value))
+  const parsed = raw
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter((item): item is UploadProvider => allowed.has(item as UploadProvider))
+
+  return parsed.length ? parsed : providerOptions.map((option) => option.value)
+})
+
+const availableProviderOptions = computed(() =>
+  providerOptions.filter((option) => availableProviders.value.includes(option.value))
+)
+
 const isTextInputProvider = computed(() => provider.value !== 'files')
+const isConfluenceProvider = computed(() => provider.value === 'confluence')
+
+watch(
+  availableProviders,
+  (providers) => {
+    if (providers.includes(provider.value)) return
+    provider.value = providers[0] ?? 'text'
+  },
+  { immediate: true }
+)
 
 await useAsyncData(`spaces-${spaceId}`, async () => {
   if (!spacesStore.spaces.length) await spacesStore.fetchSpaces(1000)
@@ -65,7 +106,7 @@ async function readFilesAsText(selectedFiles: File[]) {
 function resetCreateForm() {
   newText.value = ''
   files.value = []
-  provider.value = 'text'
+  provider.value = availableProviders.value[0] ?? 'text'
   batch.value = true
 }
 
@@ -85,7 +126,7 @@ async function buildUploadPayload(): Promise<AddToSpaceRq | null> {
     } catch {
       notify({
         type: NotificationType.ERROR,
-        message: 'Не удалось прочитать выбранные файлы'
+        message: 'Failed to read the selected files'
       })
       return null
     }
@@ -110,17 +151,13 @@ async function addContent() {
   progress.value = 0
   let lastFetchAt = 0
   try {
-    await ragStore.addDocumentStream(
-      spaceId,
-      payload,
-      async (p: number) => {
-        progress.value = p
-        if (p - lastFetchAt >= 10) {
-          await ragStore.fetchDocuments(spaceId, 1000)
-          lastFetchAt = p
-        }
+    await ragStore.addDocumentStream(spaceId, payload, async (p: number) => {
+      progress.value = p
+      if (p - lastFetchAt >= 10) {
+        await ragStore.fetchDocuments(spaceId, 1000)
+        lastFetchAt = p
       }
-    )
+    })
     await ragStore.fetchDocuments(spaceId, 1000)
     resetCreateForm()
     creating.value = false
@@ -182,10 +219,14 @@ function getDocStyle(meta: RagDocumentMetadata) {
 
     <transition name="slide-fade">
       <div v-if="creating" class="space__create">
-        <SpaceProviderSelector v-model="provider" :disabled="uploading" />
+        <SpaceProviderSelector
+          v-model="provider"
+          :items="availableProviderOptions"
+          :disabled="uploading"
+        />
 
         <textarea
-          v-if="isTextInputProvider"
+          v-if="isTextInputProvider && !isConfluenceProvider"
           v-model="newText"
           rows="4"
           placeholder="Inspiration is a guest that does not willingly visit the lazy..."
@@ -193,6 +234,20 @@ function getDocStyle(meta: RagDocumentMetadata) {
           :disabled="uploading"
           @keyup.enter.exact="addContent"
         />
+
+        <label v-else-if="isConfluenceProvider" class="space__compact-field">
+          <span class="space__compact-icon">
+            <Icon name="simple-icons:confluence" />
+          </span>
+          <input
+            v-model="newText"
+            type="url"
+            placeholder="https://confluence.example.com/..."
+            class="space__compact-input"
+            :disabled="uploading"
+            @keyup.enter.exact="addContent"
+          />
+        </label>
 
         <SpaceFileDropzone v-else v-model="files" :disabled="uploading" />
 
@@ -332,9 +387,48 @@ function getDocStyle(meta: RagDocumentMetadata) {
   @apply flex-1 resize-y rounded-md border border-[#333] bg-[#111] px-4 py-3 text-white transition-all duration-200 outline-none;
   overflow-wrap: anywhere;
   word-break: break-word;
+  border-radius: 1rem;
 }
 .space__input:focus {
   @apply border-blue-500 ring-2 ring-blue-500/30;
+}
+.space__compact-field {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border: 1px solid #333;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #141414 0%, #101010 100%);
+  padding: 0.5rem 0.75rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.space__compact-field:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+}
+.space__compact-icon {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+  flex-shrink: 0;
+}
+.space__compact-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #fff;
+  outline: none;
+  font-size: 0.95rem;
+}
+.space__compact-input::placeholder {
+  color: #6b7280;
 }
 .space__create-actions {
   @apply flex flex-wrap items-center justify-between gap-2;
