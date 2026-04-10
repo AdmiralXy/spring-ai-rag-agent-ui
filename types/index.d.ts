@@ -45,6 +45,7 @@ declare global {
   export interface AddToSpaceRq {
     text: string
     batch: boolean
+    providerType: 'text' | 'confluence'
   }
 
   export interface CreateSpaceRs {

@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
+import useNotification from '~/composables/useNotification'
+import { NotificationType } from '~/types/notification'
 import LayoutWrapper from '~/components/layout/LayoutWrapper.vue'
+import SpaceFileDropzone from '~/components/spaces/SpaceFileDropzone.vue'
+import SpaceProviderSelector from '~/components/spaces/SpaceProviderSelector.vue'
+
+type UploadProvider = 'text' | 'files' | 'confluence'
 
 const route = useRoute()
 const router = useRouter()
 const { confirm } = useConfirmDialog()
+const { notify } = useNotification()
 const spacesStore = useSpacesStore()
 const ragStore = useRagStore()
 const { loading } = storeToRefs(ragStore)
@@ -16,10 +23,14 @@ const spaceId = route.params.id as string
 const space = computed(() => spacesStore.getById(spaceId))
 
 const newText = ref('')
+const provider = ref<UploadProvider>('text')
+const files = ref<File[]>([])
 const batch = ref(true)
 const uploading = ref(false)
 const progress = ref(0)
 const creating = ref(false)
+
+const isTextInputProvider = computed(() => provider.value !== 'files')
 
 await useAsyncData(`spaces-${spaceId}`, async () => {
   if (!spacesStore.spaces.length) await spacesStore.fetchSpaces(1000)
@@ -34,15 +45,74 @@ function goBack() {
   router.push({ name: 'spaces' })
 }
 
-async function addText() {
-  if (!newText.value.trim() || uploading.value) return
+function toggleCreate() {
+  creating.value = !creating.value
+  if (!creating.value) resetCreateForm()
+}
+
+async function readFilesAsText(selectedFiles: File[]) {
+  const parts = await Promise.all(
+    selectedFiles.map(async (file) => {
+      const content = await file.text()
+      const normalizedContent = content.trim()
+      return [`File: ${file.name}`, normalizedContent].filter(Boolean).join('\n')
+    })
+  )
+
+  return parts.filter(Boolean).join('\n\n')
+}
+
+function resetCreateForm() {
+  newText.value = ''
+  files.value = []
+  provider.value = 'text'
+  batch.value = true
+}
+
+async function buildUploadPayload(): Promise<AddToSpaceRq | null> {
+  if (provider.value === 'files') {
+    if (!files.value.length) return null
+
+    try {
+      const text = await readFilesAsText(files.value)
+      if (!text.trim()) return null
+
+      return {
+        text,
+        batch: batch.value,
+        providerType: 'text'
+      }
+    } catch {
+      notify({
+        type: NotificationType.ERROR,
+        message: 'Не удалось прочитать выбранные файлы'
+      })
+      return null
+    }
+  }
+
+  if (!newText.value.trim()) return null
+
+  return {
+    text: newText.value.trim(),
+    batch: batch.value,
+    providerType: provider.value === 'confluence' ? 'confluence' : 'text'
+  }
+}
+
+async function addContent() {
+  if (uploading.value) return
+
+  const payload = await buildUploadPayload()
+  if (!payload) return
+
   uploading.value = true
   progress.value = 0
   let lastFetchAt = 0
   try {
     await ragStore.addDocumentStream(
       spaceId,
-      { text: newText.value.trim(), batch: batch.value },
+      payload,
       async (p: number) => {
         progress.value = p
         if (p - lastFetchAt >= 10) {
@@ -52,7 +122,7 @@ async function addText() {
       }
     )
     await ragStore.fetchDocuments(spaceId, 1000)
-    newText.value = ''
+    resetCreateForm()
     creating.value = false
   } finally {
     uploading.value = false
@@ -103,7 +173,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
           class="space__back"
           @click="goBack"
         />
-        <UButton color="primary" variant="solid" size="sm" @click="creating = !creating">
+        <UButton color="primary" variant="solid" size="sm" @click="toggleCreate">
           <Icon :name="creating ? 'material-symbols:close' : 'material-symbols:add'" class="mr-1" />
           {{ creating ? 'Cancel' : 'Add' }}
         </UButton>
@@ -112,14 +182,20 @@ function getDocStyle(meta: RagDocumentMetadata) {
 
     <transition name="slide-fade">
       <div v-if="creating" class="space__create">
+        <SpaceProviderSelector v-model="provider" :disabled="uploading" />
+
         <textarea
+          v-if="isTextInputProvider"
           v-model="newText"
           rows="4"
           placeholder="Inspiration is a guest that does not willingly visit the lazy..."
           class="space__input"
           :disabled="uploading"
-          @keyup.enter.exact="addText"
+          @keyup.enter.exact="addContent"
         />
+
+        <SpaceFileDropzone v-else v-model="files" :disabled="uploading" />
+
         <div class="space__create-actions">
           <UButton
             color="primary"
@@ -128,7 +204,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
             class="space__create__btn"
             icon="i-lucide-rocket"
             :loading="uploading || loading"
-            @click="addText"
+            @click="addContent"
           >
             {{ uploading ? 'Uploading...' : 'Upload' }}
           </UButton>
@@ -252,6 +328,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
   @apply mb-5 flex flex-col gap-3 rounded-xl border border-[#333] bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 shadow-md;
 }
 .space__input {
+  min-height: 7.5rem;
   @apply flex-1 resize-y rounded-md border border-[#333] bg-[#111] px-4 py-3 text-white transition-all duration-200 outline-none;
   overflow-wrap: anywhere;
   word-break: break-word;
