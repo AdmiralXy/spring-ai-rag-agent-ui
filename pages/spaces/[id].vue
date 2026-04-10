@@ -37,7 +37,7 @@ const progress = ref(0)
 const creating = ref(false)
 
 const providerOptions: ProviderOption[] = [
-  { value: 'text', label: 'Text', icon: 'material-symbols:text-snippet-outline-rounded' },
+  { value: 'text', label: 'Content', icon: 'material-symbols:text-snippet-outline-rounded' },
   { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
   { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' }
 ]
@@ -161,6 +161,11 @@ async function addContent() {
     await ragStore.fetchDocuments(spaceId, 1000)
     resetCreateForm()
     creating.value = false
+  } catch {
+    notify({
+      type: NotificationType.ERROR,
+      message: 'Failed to upload content'
+    })
   } finally {
     uploading.value = false
   }

@@ -47,16 +47,16 @@ const getColor = (
 const getDefaultTitle = (notificationType: NotificationType) => {
   switch (notificationType) {
     case NotificationType.INTERNAL_ERROR:
-      return 'Ошибка'
+      return 'Ooops...'
     case NotificationType.ERROR:
-      return 'Ошибка'
+      return 'Ooops...'
     case NotificationType.WARNING:
-      return 'Предупреждение'
+      return 'Warning'
     case NotificationType.INFO:
-      return 'Информация'
+      return 'Info'
     case NotificationType.SUCCESS:
-      return 'Успешно'
+      return 'Success'
     default:
-      return 'Информация'
+      return 'Notification'
   }
 }

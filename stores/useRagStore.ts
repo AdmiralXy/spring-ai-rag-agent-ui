@@ -45,7 +45,14 @@ export const useRagStore = defineStore('rag', {
         body: JSON.stringify(payload)
       })
 
-      if (!res.body) return
+      if (!res.ok) {
+        const errorText = await res.text()
+        throw new Error(errorText || 'Upload failed')
+      }
+
+      if (!res.body) {
+        throw new Error('Upload failed')
+      }
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
