@@ -7,6 +7,9 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,3 +38,17 @@ jobs:
           docker push "${IMAGE_TAG}"
           docker tag "${IMAGE_TAG}" "${IMAGE_NAME}:latest"
           docker push "${IMAGE_NAME}:latest"
+
+      - name: Save Docker image to tar.gz
+        run: |
+          docker save -o agent-ui.tar "${IMAGE_TAG}"
+          gzip agent-ui.tar
+
+      - name: Create or update release "Latest"
+        run: |
+          gh release delete latest -y || true
+          gh release create latest agent-ui.tar.gz \
+            --title "Latest" \
+            --notes "Release build from run ${{ github.run_id }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
