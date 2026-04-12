@@ -21,7 +21,12 @@ export default defineNuxtConfig({
     apiBase: 'http://localhost:8080/api/agent',
     public: {
       apiBase: 'http://localhost:8080/api/agent',
-      spaceUploadProviders: ''
+      spaceUploadProviders: '',
+      repositoryUrl:
+        import.meta.env.NUXT_PUBLIC_REPOSITORY_URL ||
+        'https://github.com/AdmiralXy/spring-ai-rag-agent',
+      buildNumber: import.meta.env.NUXT_PUBLIC_BUILD_NUMBER || 'local',
+      buildDate: import.meta.env.NUXT_PUBLIC_BUILD_DATE || ''
     }
   }
 })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { useRouter } from 'vue-router'
+import BuildInfoModal from '~/components/layout/BuildInfoModal.vue'
 
 const MAX_SELECTED_SPACES = 5
 
@@ -25,6 +26,7 @@ await useAsyncData('chats', async () => {
 const router = useRouter()
 
 const creating = ref(false)
+const isBuildInfoOpen = ref(false)
 const chatsListRef = ref<HTMLElement | null>(null)
 const selectedSpaces = ref<string[]>([])
 
@@ -36,15 +38,6 @@ const selectItems = computed(() =>
       selectedSpaces.value.length >= MAX_SELECTED_SPACES && !selectedSpaces.value.includes(space.id)
   }))
 )
-
-const selectedSpacesLabel = computed(() => {
-  if (!selectedSpaces.value.length) return 'Without spaces'
-
-  return spacesStore.spaces
-    .filter((space) => selectedSpaces.value.includes(space.id))
-    .map((space) => space.name)
-    .join(', ')
-})
 
 async function loadMoreChats() {
   if (chatsStore.chatsLoading || chatsStore.chatsLoadingMore || !chatsStore.hasMoreChats) return
@@ -130,10 +123,14 @@ onMounted(async () => {
 <template>
   <div class="sidebar">
     <div class="sidebar__header">
-      <NuxtLink href="/" class="sidebar__header__button" @click="navigate">
-        <Icon name="material-symbols-light:settings" />
-        Home
-      </NuxtLink>
+      <button
+        class="sidebar__header__github"
+        title="About this build"
+        aria-label="Open GitHub build info"
+        @click="isBuildInfoOpen = true"
+      >
+        <Icon name="mdi:github" class="sidebar__header__github-icon" />
+      </button>
 
       <NuxtLink href="/spaces" class="sidebar__header__button" @click="navigate">
         <Icon name="material-symbols-light:settings" />
@@ -170,9 +167,9 @@ onMounted(async () => {
             value: 'text-white'
           }"
         />
-        <p class="sidebar__header__hint">{{ selectedSpacesLabel }}</p>
-        <p class="sidebar__header__hint">{{ selectedSpaces.length }}/{{ MAX_SELECTED_SPACES }}</p>
       </div>
+
+      <BuildInfoModal v-model:open="isBuildInfoOpen" />
     </div>
 
     <p class="sidebar__list-name">Chats</p>
@@ -208,6 +205,18 @@ onMounted(async () => {
   @apply mt-2 flex min-h-[7vh] flex-col p-2;
 }
 
+.sidebar__header__github {
+  @apply mb-2 flex h-9 w-9 cursor-pointer items-center justify-center self-start rounded-full border border-[#343434] bg-[#1f1f1f] text-white transition-colors duration-200;
+}
+
+.sidebar__header__github:hover {
+  @apply border-[#4a4a4a] bg-[#2a2a2a];
+}
+
+.sidebar__header__github-icon {
+  @apply h-full w-full p-1;
+}
+
 .sidebar__header__button {
   @apply mb-1 flex items-center gap-2 rounded-md p-2 text-white transition-colors duration-200 disabled:opacity-50;
 }
@@ -224,10 +233,6 @@ onMounted(async () => {
   @apply mt-1;
 }
 
-.sidebar__header__hint {
-  @apply mt-2 text-xs text-gray-400;
-}
-
 .sidebar__list-name {
   @apply mt-2 ml-4 text-[0.9rem] font-bold text-gray-400;
 }
@@ -237,7 +242,7 @@ onMounted(async () => {
 }
 
 .sidebar__item {
-  @apply flex cursor-pointer items-center justify-between rounded-md p-3 text-white transition-colors duration-200;
+  @apply flex cursor-pointer items-center justify-between rounded-md p-3 text-sm text-white transition-colors duration-200;
 }
 
 .sidebar__item:hover {
