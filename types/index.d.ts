@@ -45,7 +45,30 @@ declare global {
   export interface AddToSpaceRq {
     text: string
     batch: boolean
-    providerType: 'text' | 'confluence'
+    providerType: 'text' | 'confluence' | 'git'
+    auth?: ProviderAuth
+    git?: GitUploadOptions
+  }
+
+  export interface ProviderAuth {
+    login: string
+    password: string
+  }
+
+  export interface GitUploadOptions {
+    branch: string
+    folder: string
+  }
+
+  export interface GitInfoRq {
+    url: string
+    login?: string
+    password?: string
+  }
+
+  export interface GitInfoRs {
+    branches: string[]
+    folders: string[]
   }
 
   export interface CreateSpaceRs {

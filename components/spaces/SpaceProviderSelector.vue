@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type UploadProvider = 'text' | 'files' | 'confluence'
+type UploadProvider = 'text' | 'files' | 'confluence' | 'git'
 
 interface ProviderOption {
   value: UploadProvider
@@ -20,7 +20,8 @@ const emit = defineEmits<{
 const defaultOptions: ProviderOption[] = [
   { value: 'text', label: 'Text', icon: 'material-symbols:text-snippet-outline-rounded' },
   { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
-  { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' }
+  { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' },
+  { value: 'git', label: 'Git', icon: 'mdi:git' }
 ]
 
 function selectProvider(value: UploadProvider) {
