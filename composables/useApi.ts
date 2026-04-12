@@ -17,9 +17,6 @@ export function useApi() {
     try {
       return await $fetch<T>(endpoint, {
         baseURL,
-        headers: {
-          Authorization: `Bearer ${config.public.apiToken}`
-        },
         ...options
       })
     } catch (err: any) {
@@ -61,10 +58,18 @@ export function useApi() {
   ): Promise<TResponse> => request<TResponse>(url, { method: 'PATCH', body, ...opts })
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const put = <TResponse>(
+    url: NitroFetchRequest,
+    body?: any,
+    opts?: NitroFetchOptions<NitroFetchRequest>
+  ): Promise<TResponse> => request<TResponse>(url, { method: 'PUT', body, ...opts })
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
   const del = <T>(
     url: NitroFetchRequest,
     opts?: NitroFetchOptions<NitroFetchRequest>
   ): Promise<T> => request<T>(url, { method: 'DELETE', ...opts })
 
-  return { get, post, patch, del }
+  return { get, post, patch, put, del }
 }

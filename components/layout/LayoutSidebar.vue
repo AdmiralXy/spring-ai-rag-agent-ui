@@ -9,7 +9,7 @@ const { confirm } = useConfirmDialog()
 const chatsStore = useChatsStore()
 const spacesStore = useSpacesStore()
 
-await useAsyncData('spaces', async () => {
+await useAsyncData('spaces-sidebar', async () => {
   if (!spacesStore.spaces.length) {
     await spacesStore.fetchSpaces(1000)
   }
@@ -140,6 +140,11 @@ onMounted(async () => {
       <NuxtLink href="/prompts" class="sidebar__header__button" @click="navigate">
         <Icon name="material-symbols:description-outline-rounded" />
         Prompts
+      </NuxtLink>
+
+      <NuxtLink href="/settings/models" class="sidebar__header__button" @click="navigate">
+        <Icon name="material-symbols:settings-outline" />
+        Settings
       </NuxtLink>
 
       <button

@@ -54,7 +54,8 @@ declare global {
 
   export interface CreateChatRs {
     chatId: string
-    modelName: string
+    modelId?: string
+    modelName?: string
     title: string
   }
 
@@ -137,8 +138,63 @@ declare global {
   export interface Chat {
     id: string
     title: string
-    modelName: string
+    modelId?: string
+    modelName?: string
     ragSpaces: string[]
+  }
+
+  export type ChatModelProvider = 'OPENAI' | 'ANTHROPIC'
+
+  export interface ChatModelSettings {
+    id: string
+    provider: ChatModelProvider
+    label: string
+    name: string
+    baseUrl: string
+    apiKey: string
+    streaming: boolean
+    systemPrompt: string
+    priority: number
+    temperature: number
+    maxContextTokens: number
+  }
+
+  export interface UpsertChatModelRq {
+    provider: ChatModelProvider
+    label: string
+    name: string
+    baseUrl: string
+    apiKey: string
+    streaming: boolean
+    systemPrompt: string
+    priority: number
+    temperature: number
+    maxContextTokens: number
+  }
+
+  export interface GetChatModelsSettingsRs {
+    models: ChatModelSettings[]
+  }
+
+  export interface EmbeddingsModelSettings {
+    provider: 'OPENAI'
+    baseUrl: string
+    apiKey: string
+    name: string
+    dimensions: number
+    maxDocumentTokens: number
+  }
+
+  export interface SummarizerModelSettings {
+    provider: ChatModelProvider
+    name: string
+    baseUrl: string
+    apiKey: string
+    systemPrompt: string
+  }
+
+  export interface UpdateChatModelRq {
+    modelId: string
   }
 
   export interface Space {

@@ -41,14 +41,27 @@ await useAsyncData('prompt-templates-chat', async () => {
   return promptTemplatesStore.templates
 })
 
-const models = modelsStore.models
-const selectedModel = ref(models.find((m) => m.value === currentChat.value?.modelName) || models[0])
+const selectedModelId = ref('')
 
-watch(currentChat, (newChat) => {
-  if (!newChat) return
-  const found = models.find((m) => m.value === newChat.modelName)
-  selectedModel.value = found || models[0]
-})
+function resolveChatModelId(chat?: Chat) {
+  return chat?.modelId || chat?.modelName || modelsStore.models[0]?.value || ''
+}
+
+watch(
+  [currentChat, () => modelsStore.models],
+  ([chat, models]) => {
+    if (!models.length) {
+      selectedModelId.value = ''
+      return
+    }
+
+    const resolved = resolveChatModelId(chat)
+    if (!selectedModelId.value || !models.some((item) => item.value === selectedModelId.value)) {
+      selectedModelId.value = resolved
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 async function scrollToBottom(smooth = false) {
   await nextTick()
@@ -107,15 +120,23 @@ async function handleSend(payload: { text: string; files: File[] }) {
   const isFirstMessageInChat = chatsStore.activeMessages.length === 0
   const previousTitle = currentChat.value?.title
 
-  const selected = selectedModel.value?.value as string
-  const current = currentChat.value?.modelName
+  const selected = selectedModelId.value
+  const current = currentChat.value?.modelId || currentChat.value?.modelName
+
+  if (!selected) {
+    notify({
+      type: NotificationType.WARNING,
+      message: 'Select a model before sending a message'
+    })
+    return
+  }
 
   if (!current || current !== selected) {
-    await chatsStore.updateModelName(chatId, selected)
+    await chatsStore.updateModel(chatId, selected)
   }
 
   await chatsStore.sendMessage(chatId, {
-    modelName: selected,
+    modelId: selected,
     text
   })
 
@@ -139,10 +160,10 @@ async function handleSend(payload: { text: string; files: File[] }) {
       </div>
       <div class="chat-area__model-input">
         <USelectMenu
-          v-model="selectedModel"
-          :items="models"
-          option-attribute="label"
-          value-attribute="value"
+          v-model="selectedModelId"
+          :items="modelsStore.models"
+          label-key="label"
+          value-key="value"
           placeholder="Model"
           :ui="{
             base: 'mx-18 lg:mx-4 my-1 max-w-[14rem] min-w-[10rem] md:max-w-[18rem] lg:max-w-[22rem] bg-[#2a2a2a] text-white border border-[#474747]',

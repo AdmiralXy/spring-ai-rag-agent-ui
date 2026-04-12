@@ -161,6 +161,7 @@ export const useChatsStore = defineStore('chats', {
         const chat: Chat = {
           id: res.chatId,
           title: res.title,
+          modelId: res.modelId ?? res.modelName,
           modelName: res.modelName,
           ragSpaces: payload.ragSpaces
         }
@@ -177,7 +178,7 @@ export const useChatsStore = defineStore('chats', {
     },
 
     /** Send message */
-    async sendMessage(chatId: string, payload: { modelName: string; text: string }) {
+    async sendMessage(chatId: string, payload: { modelId: string; text: string }) {
       const config = useRuntimeConfig()
       const baseURL = import.meta.server
         ? (config.apiBase as string)
@@ -268,15 +269,16 @@ export const useChatsStore = defineStore('chats', {
     },
 
     /** Update model for chat */
-    async updateModelName(chatId: string, modelAlias: string) {
+    async updateModel(chatId: string, modelId: string) {
       this.loading = true
       try {
         const api = useApi()
-        await api.patch(`/chats/${chatId}/model`, { modelAlias })
+        await api.patch(`/chats/${chatId}/model`, { modelId } satisfies UpdateChatModelRq)
 
         const chat = this.chats.find((c) => c.id === chatId)
         if (chat) {
-          chat.modelName = modelAlias
+          chat.modelId = modelId
+          chat.modelName = modelId
         }
       } finally {
         this.loading = false
