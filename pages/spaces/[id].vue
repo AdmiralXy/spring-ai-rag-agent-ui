@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
@@ -65,6 +65,11 @@ const uploading = ref(false)
 const progress = ref(0)
 const creating = ref(false)
 const docColors = ref<Record<string, { label: string; color: string }>>({})
+const scrollContainerRef = ref<HTMLElement | null>(null)
+const searchQuery = ref('')
+const activeSearchQuery = ref('')
+const searchResults = ref<RagDocument[]>([])
+const searchDepth = ref(5)
 
 const availableProviders = computed<UploadProvider[]>(() => {
   const raw = String(config.public.spaceUploadProviders ?? '').trim()
@@ -84,10 +89,26 @@ const availableProviders = computed<UploadProvider[]>(() => {
 const availableProviderOptions = computed(() =>
   providerOptions.filter((option) => availableProviders.value.includes(option.value))
 )
+const searchDepthOptions = [
+  { label: 'Top 5', value: 5 },
+  { label: 'Top 10', value: 10 },
+  { label: 'Top 20', value: 20 },
+  { label: 'Top 40', value: 40 }
+]
 
 const isPlainTextProvider = computed(() => provider.value === 'text')
 const isConfluenceProvider = computed(() => provider.value === 'confluence')
 const isGitProvider = computed(() => provider.value === 'git')
+const documents = computed(() => ragStore.getDocsBySpace(spaceId))
+const documentsLoading = computed(() => ragStore.isDocumentsLoading(spaceId))
+const documentsLoadingMore = computed(() => ragStore.isDocumentsLoadingMore(spaceId))
+const documentsHasMore = computed(() => ragStore.hasMoreDocuments(spaceId))
+const searchLoading = computed(() => ragStore.isSearchLoading(spaceId))
+const isSearchMode = computed(() => Boolean(activeSearchQuery.value))
+const visibleDocuments = computed(() =>
+  isSearchMode.value ? searchResults.value : ragStore.getDocsBySpace(spaceId)
+)
+const loadedDocumentsCount = computed(() => documents.value.length)
 const canLoadGitInfo = computed(() => {
   if (!gitUrl.value.trim()) return false
   if (hasPartialAuth(gitLogin.value, gitPassword.value)) return false
@@ -125,11 +146,54 @@ await useAsyncData(`spaces-${spaceId}`, async () => {
 })
 
 await useAsyncData(`documents-${spaceId}`, async () => {
-  await ragStore.fetchDocuments(spaceId, 1000)
+  await ragStore.initializeDocuments(spaceId)
   return ragStore.getDocsBySpace(spaceId)
 })
 
+async function onDocumentsScroll() {
+  if (isSearchMode.value) return
+
+  const container = scrollContainerRef.value
+  if (
+    !container ||
+    documentsLoading.value ||
+    documentsLoadingMore.value ||
+    !documentsHasMore.value
+  ) {
+    return
+  }
+
+  const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+  if (distanceToBottom <= 120) {
+    await ragStore.loadMoreDocuments(spaceId)
+  }
+}
+
+async function runSearch() {
+  const query = searchQuery.value.trim()
+  if (!query) {
+    clearSearch()
+    return
+  }
+
+  activeSearchQuery.value = query
+  searchResults.value = []
+  try {
+    searchResults.value = await ragStore.searchDocuments(spaceId, query, searchDepth.value)
+  } catch {
+    searchResults.value = []
+  }
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  activeSearchQuery.value = ''
+  searchResults.value = []
+  void nextTick().then(() => onDocumentsScroll())
+}
+
 function goBack() {
+  creating.value = false
   router.push({ name: 'spaces' })
 }
 
@@ -271,7 +335,7 @@ async function loadGitInfo() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const confluenceAuth = loadPersistedAuth('confluence')
   const gitAuth = loadPersistedAuth('git')
 
@@ -281,6 +345,9 @@ onMounted(() => {
   gitPassword.value = gitAuth.password
 
   authStorageReady.value = true
+
+  await nextTick()
+  await onDocumentsScroll()
 })
 
 watch([confluenceLogin, confluencePassword], ([login, password]) => {
@@ -431,12 +498,12 @@ async function addContent() {
     await ragStore.addDocumentStream(spaceId, payload, async (p: number) => {
       progress.value = p
       if (p - lastFetchAt >= 10) {
-        await ragStore.fetchDocuments(spaceId, 1000)
+        await ragStore.refreshDocuments(spaceId)
         lastFetchAt = p
       }
     })
 
-    await ragStore.fetchDocuments(spaceId, 1000)
+    await ragStore.refreshDocuments(spaceId)
     resetCreateForm()
     creating.value = false
   } catch {
@@ -451,12 +518,18 @@ async function addContent() {
 
 async function deleteText(docId: string, chunkId: string) {
   const ok = await confirm('Remove text chunk', 'This action cannot be undone.')
-  if (ok) await ragStore.deleteDocumentChunk(spaceId, docId, chunkId)
+  if (ok) {
+    await ragStore.deleteDocumentChunk(spaceId, docId, chunkId)
+    searchResults.value = searchResults.value.filter((doc) => doc.metadata.chunk !== chunkId)
+  }
 }
 
 async function deleteDocument(docId: string) {
   const ok = await confirm('Remove entire document', 'This will delete all chunks.')
-  if (ok) await ragStore.deleteDocument(spaceId, docId)
+  if (ok) {
+    await ragStore.deleteDocument(spaceId, docId)
+    searchResults.value = searchResults.value.filter((doc) => doc.metadata.doc !== docId)
+  }
 }
 
 function hashString(str: string): number {
@@ -477,6 +550,15 @@ function getDocStyle(meta: RagDocumentMetadata) {
 
   return docColors.value[groupId]
 }
+
+watch(
+  () => documents.value.length,
+  async () => {
+    if (isSearchMode.value) return
+    await nextTick()
+    await onDocumentsScroll()
+  }
+)
 </script>
 
 <template>
@@ -498,105 +580,227 @@ function getDocStyle(meta: RagDocumentMetadata) {
       </div>
     </template>
 
-    <transition name="slide-fade">
-      <div v-if="creating" class="space__create">
-        <SpaceProviderSelector
-          v-model="provider"
-          :items="availableProviderOptions"
-          :disabled="uploading"
+    <div v-show="creating" class="space__create">
+      <SpaceProviderSelector
+        v-model="provider"
+        :items="availableProviderOptions"
+        :disabled="uploading"
+      />
+
+      <SpaceTextProvider
+        v-if="isPlainTextProvider"
+        v-model="newText"
+        :disabled="uploading"
+        @submit="addContent"
+      />
+
+      <SpaceConfluenceProvider
+        v-else-if="isConfluenceProvider"
+        :url="confluenceUrl"
+        :login="confluenceLogin"
+        :password="confluencePassword"
+        :disabled="uploading"
+        @update:url="confluenceUrl = $event"
+        @update:login="confluenceLogin = $event"
+        @update:password="confluencePassword = $event"
+        @submit="addContent"
+      />
+
+      <SpaceGitProvider
+        v-else-if="isGitProvider"
+        :url="gitUrl"
+        :branch="gitBranch"
+        :folder="gitFolder"
+        :login="gitLogin"
+        :password="gitPassword"
+        :branches="gitBranches"
+        :folders="gitFolders"
+        :info-loading="gitInfoLoading"
+        :info-loaded="gitInfoLoaded"
+        :info-error="gitInfoError"
+        :info-summary="gitInfoSummary"
+        :disabled="uploading"
+        :can-load-info="canLoadGitInfo"
+        @update:url="gitUrl = $event"
+        @update:branch="gitBranch = $event"
+        @update:folder="gitFolder = $event"
+        @update:login="gitLogin = $event"
+        @update:password="gitPassword = $event"
+        @load-info="loadGitInfo"
+        @clear-folder="clearGitFolder"
+      />
+
+      <SpaceFilesProvider v-else v-model="files" :disabled="uploading" />
+
+      <div class="space__create-actions">
+        <UButton
+          color="primary"
+          variant="solid"
+          size="md"
+          class="space__create__btn"
+          icon="i-lucide-rocket"
+          :loading="uploading || loading"
+          :disabled="!canUpload"
+          @click="addContent"
+        >
+          {{ uploading ? 'Uploading...' : 'Upload' }}
+        </UButton>
+        <UCheckbox
+          v-if="!uploading"
+          v-model="batch"
+          label="Enable batching"
+          class="space__batching"
         />
+      </div>
+    </div>
 
-        <SpaceTextProvider
-          v-if="isPlainTextProvider"
-          v-model="newText"
-          :disabled="uploading"
-          @submit="addContent"
-        />
+    <div v-show="uploading" class="space__progress">
+      <UProgress v-model="progress" :max="100" color="primary" size="md" />
+      <p class="space__progress-text">{{ progress }}%</p>
+    </div>
 
-        <SpaceConfluenceProvider
-          v-else-if="isConfluenceProvider"
-          :url="confluenceUrl"
-          :login="confluenceLogin"
-          :password="confluencePassword"
-          :disabled="uploading"
-          @update:url="confluenceUrl = $event"
-          @update:login="confluenceLogin = $event"
-          @update:password="confluencePassword = $event"
-          @submit="addContent"
-        />
+    <div class="space__explorer">
+      <div class="space__search-card">
+        <div class="space__search-heading">
+          <div>
+            <p class="space__search-eyebrow">Semantic Search</p>
+            <h3 class="space__search-title">Find relevant chunks inside this space</h3>
+          </div>
+          <div class="space__stats">
+            <span class="space__stat-chip">Loaded: {{ loadedDocumentsCount }}</span>
+            <span v-if="!isSearchMode" class="space__stat-chip">
+              {{ documentsHasMore ? 'More documents available' : 'All loaded' }}
+            </span>
+            <span v-else class="space__stat-chip space__stat-chip--accent">
+              Results: {{ searchResults.length }}
+            </span>
+          </div>
+        </div>
 
-        <SpaceGitProvider
-          v-else-if="isGitProvider"
-          :url="gitUrl"
-          :branch="gitBranch"
-          :folder="gitFolder"
-          :login="gitLogin"
-          :password="gitPassword"
-          :branches="gitBranches"
-          :folders="gitFolders"
-          :info-loading="gitInfoLoading"
-          :info-loaded="gitInfoLoaded"
-          :info-error="gitInfoError"
-          :info-summary="gitInfoSummary"
-          :disabled="uploading"
-          :can-load-info="canLoadGitInfo"
-          @update:url="gitUrl = $event"
-          @update:branch="gitBranch = $event"
-          @update:folder="gitFolder = $event"
-          @update:login="gitLogin = $event"
-          @update:password="gitPassword = $event"
-          @load-info="loadGitInfo"
-          @clear-folder="clearGitFolder"
-        />
+        <div class="space__search-controls">
+          <UInput
+            v-model="searchQuery"
+            icon="material-symbols:search-rounded"
+            placeholder="Search by meaning, topic or phrase"
+            size="lg"
+            class="space__search-input"
+            :ui="{
+              base: 'bg-[#181818] text-white border border-[#3b3b3b]',
+              leadingIcon: 'text-gray-400'
+            }"
+            @keydown.enter.prevent="runSearch"
+          />
 
-        <SpaceFilesProvider v-else v-model="files" :disabled="uploading" />
+          <USelectMenu
+            v-model="searchDepth"
+            :items="searchDepthOptions"
+            label-key="label"
+            value-key="value"
+            class="space__search-select"
+            :search-input="false"
+            :ui="{
+              base: 'bg-[#181818] text-white border border-[#3b3b3b]',
+              content: 'bg-[#232323] text-white',
+              item: 'bg-[#232323] border border-[#363636]',
+              placeholder: 'text-gray-400',
+              value: 'text-white'
+            }"
+          />
 
-        <div class="space__create-actions">
           <UButton
             color="primary"
             variant="solid"
-            size="md"
-            class="space__create__btn"
-            icon="i-lucide-rocket"
-            :loading="uploading || loading"
-            :disabled="!canUpload"
-            @click="addContent"
+            size="lg"
+            icon="material-symbols:travel-explore-rounded"
+            :loading="searchLoading"
+            :disabled="!searchQuery.trim()"
+            @click="runSearch"
           >
-            {{ uploading ? 'Uploading...' : 'Upload' }}
+            Search
           </UButton>
-          <UCheckbox
-            v-if="!uploading"
-            v-model="batch"
-            label="Enable batching"
-            class="space__batching"
-          />
+
+          <UButton
+            v-if="isSearchMode"
+            color="neutral"
+            variant="soft"
+            size="lg"
+            icon="material-symbols:close-rounded"
+            @click="clearSearch"
+          >
+            Clear
+          </UButton>
         </div>
-      </div>
-    </transition>
 
-    <transition name="fade">
-      <div v-if="uploading" class="space__progress">
-        <UProgress v-model="progress" :max="100" color="primary" size="md" />
-        <p class="space__progress-text">{{ progress }}%</p>
+        <p class="space__search-hint">
+          <template v-if="isSearchMode">
+            Query: "{{ activeSearchQuery }}". Showing the top {{ searchDepth }} semantic matches.
+          </template>
+        </p>
       </div>
-    </transition>
+    </div>
 
-    <div class="space__scroll-container">
-      <ul v-if="loading" class="space__list">
+    <div
+      ref="scrollContainerRef"
+      class="space__scroll-container"
+      @scroll.passive="onDocumentsScroll"
+    >
+      <ul v-if="documentsLoading && !loadedDocumentsCount && !isSearchMode" class="space__list">
         <li v-for="n in 3" :key="n" class="space__item">
           <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
           <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
         </li>
       </ul>
 
+      <ul v-else-if="searchLoading && isSearchMode && !searchResults.length" class="space__list">
+        <li v-for="n in 3" :key="n" class="space__item space__item--search">
+          <USkeleton class="h-5 w-56 animate-pulse rounded bg-gray-700/50" />
+          <USkeleton class="mt-8 h-18 w-full animate-pulse rounded bg-gray-700/50" />
+        </li>
+      </ul>
+
+      <div v-else-if="!visibleDocuments.length" class="space__empty-state">
+        <Icon
+          :name="
+            isSearchMode
+              ? 'material-symbols:travel-explore-outline-rounded'
+              : 'material-symbols:article-outline-rounded'
+          "
+          class="space__empty-icon"
+        />
+        <p class="space__empty-title">
+          {{
+            isSearchMode ? 'No matching chunks found' : 'This space does not contain documents yet'
+          }}
+        </p>
+        <p class="space__empty-text">
+          {{
+            isSearchMode
+              ? 'Try a broader query or increase the number of returned matches.'
+              : 'Add content above to start building the knowledge base for this space.'
+          }}
+        </p>
+      </div>
+
       <ul v-else class="space__list">
-        <li v-for="doc in ragStore.getDocsBySpace(spaceId)" :key="doc.id" class="space__item">
+        <li
+          v-for="doc in visibleDocuments"
+          :key="doc.id"
+          class="space__item"
+          :class="{ 'space__item--search': isSearchMode }"
+        >
           <div class="space__doc-label">
             <span
               class="space__label"
               :style="{ backgroundColor: getDocStyle(doc.metadata).color }"
             >
               {{ getDocStyle(doc.metadata).label }}
+            </span>
+            <span v-if="isSearchMode" class="space__match-chip">Match</span>
+            <span
+              v-if="isSearchMode && doc.metadata.distance !== undefined"
+              class="space__distance-chip"
+            >
+              {{ doc.metadata.distance.toFixed(3) }}
             </span>
             <button
               class="space__delete-all"
@@ -607,6 +811,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
             </button>
           </div>
 
+          <p class="space__doc-source">{{ doc.metadata.doc }}</p>
           <span class="space__content">{{ doc.content }}</span>
 
           <div class="space__actions">
@@ -619,6 +824,13 @@ function getDocStyle(meta: RagDocumentMetadata) {
             </button>
           </div>
         </li>
+
+        <li v-if="documentsLoadingMore && !isSearchMode" class="space__list-status">
+          Loading more documents...
+        </li>
+        <li v-else-if="!documentsHasMore && !isSearchMode" class="space__list-status">
+          All available documents are loaded
+        </li>
       </ul>
     </div>
   </LayoutWrapper>
@@ -626,6 +838,54 @@ function getDocStyle(meta: RagDocumentMetadata) {
 
 <style scoped>
 @import 'tailwindcss/theme';
+
+.space__explorer {
+  @apply mt-4;
+}
+
+.space__search-card {
+  @apply rounded-2xl border border-[#303030] bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),_transparent_32%),linear-gradient(135deg,_#1b1b1b,_#232323)] p-4 shadow-lg;
+}
+
+.space__search-heading {
+  @apply flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between;
+}
+
+.space__search-eyebrow {
+  @apply text-[0.7rem] font-semibold tracking-[0.22em] text-cyan-300/80 uppercase;
+}
+
+.space__search-title {
+  @apply mt-1 text-lg font-semibold text-white;
+}
+
+.space__stats {
+  @apply flex flex-wrap gap-2;
+}
+
+.space__stat-chip {
+  @apply rounded-full border border-[#3b3b3b] bg-black/20 px-3 py-1 text-xs text-gray-300;
+}
+
+.space__stat-chip--accent {
+  @apply border-cyan-500/40 text-cyan-200;
+}
+
+.space__search-controls {
+  @apply mt-4 flex flex-col gap-3 xl:flex-row xl:items-center;
+}
+
+.space__search-input {
+  @apply min-w-0 flex-1;
+}
+
+.space__search-select {
+  @apply w-full xl:w-[9rem];
+}
+
+.space__search-hint {
+  @apply mt-3 text-sm leading-relaxed text-gray-400;
+}
 
 .space__scroll-container {
   @apply mt-4 flex-1 overflow-x-hidden overflow-y-auto;
@@ -644,12 +904,20 @@ function getDocStyle(meta: RagDocumentMetadata) {
   box-sizing: border-box;
 }
 
+.space__item--search {
+  @apply border border-cyan-500/15 bg-[linear-gradient(135deg,_rgba(8,145,178,0.08),_rgba(30,30,30,1)_35%)] shadow-[0_0_0_1px_rgba(6,182,212,0.06)];
+}
+
 .space__item:hover {
   @apply bg-[#2a2a2a];
 }
 
+.space__doc-source {
+  @apply max-w-[calc(100%-8rem)] truncate text-xs text-gray-500;
+}
+
 .space__content {
-  @apply mt-9 flex-1 pr-8 text-sm leading-snug break-words whitespace-pre-wrap text-white;
+  @apply mt-4 flex-1 pr-8 text-sm leading-snug break-words whitespace-pre-wrap text-white;
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
@@ -661,6 +929,14 @@ function getDocStyle(meta: RagDocumentMetadata) {
 
 .space__label {
   @apply rounded px-2 py-1 text-xs font-bold text-black;
+}
+
+.space__match-chip {
+  @apply rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[0.65rem] font-semibold tracking-[0.16em] text-cyan-200 uppercase;
+}
+
+.space__distance-chip {
+  @apply rounded-full border border-[#474747] bg-[#111] px-2 py-1 text-[0.7rem] font-medium text-gray-300;
 }
 
 .space__actions {
@@ -700,23 +976,23 @@ function getDocStyle(meta: RagDocumentMetadata) {
   @apply mt-1 text-right text-xs text-gray-400;
 }
 
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  @apply transition-all duration-300 ease-in-out;
+.space__empty-state {
+  @apply flex min-h-[18rem] flex-col items-center justify-center rounded-2xl border border-dashed border-[#3b3b3b] bg-[#1a1a1a] px-6 text-center;
 }
 
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  @apply translate-y-3 opacity-0;
+.space__empty-icon {
+  @apply text-5xl text-gray-500;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  @apply transition-opacity duration-300 ease-in-out;
+.space__empty-title {
+  @apply mt-4 text-lg font-semibold text-white;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  @apply opacity-0;
+.space__empty-text {
+  @apply mt-2 max-w-xl text-sm leading-relaxed text-gray-400;
+}
+
+.space__list-status {
+  @apply py-3 text-center text-xs text-gray-500;
 }
 </style>

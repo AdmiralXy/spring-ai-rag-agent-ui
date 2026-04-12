@@ -12,7 +12,7 @@ declare global {
   }
 
   export interface CreateChatRq {
-    ragSpace: string
+    ragSpaces: string[]
   }
 
   export interface GetDocumentsRs {
@@ -102,15 +102,23 @@ declare global {
   }
 
   export interface Page<T> extends Slice<T> {
-    totalPages: number
+    page?: PageMetadata
+    totalPages?: number
+    totalElements?: number
+  }
+
+  export interface PageMetadata {
+    size: number
+    number: number
     totalElements: number
+    totalPages: number
   }
 
   export interface Chat {
     id: string
     title: string
     modelName: string
-    ragSpace: string
+    ragSpaces: string[]
   }
 
   export interface Space {
@@ -136,14 +144,14 @@ declare global {
   export interface Serializable {}
 
   export interface Slice<T> extends Streamable<T> {
-    size: number
+    size?: number
     content: T[]
-    number: number
-    pageable: Pageable
-    numberOfElements: number
-    sort: Sort
-    first: boolean
-    last: boolean
+    number?: number
+    pageable?: Pageable
+    numberOfElements?: number
+    sort?: Sort
+    first?: boolean
+    last?: boolean
   }
 
   export interface Streamable<T> extends Iterable<T>, Supplier<Stream<T>> {

@@ -1,12 +1,62 @@
 import { defineStore } from 'pinia'
 import { useApi } from '~/composables/useApi'
 
+function mergeChats(existing: Chat[], incoming: Chat[]) {
+  const seen = new Set<string>()
+  const merged: Chat[] = []
+
+  for (const chat of [...existing, ...incoming]) {
+    if (seen.has(chat.id)) continue
+    seen.add(chat.id)
+    merged.push(chat)
+  }
+
+  return merged
+}
+
+function getPageMeta(pageData: Page<Chat>) {
+  if (pageData.page) {
+    return pageData.page
+  }
+
+  return {
+    size: pageData.size ?? pageData.content.length,
+    number: pageData.number ?? 0,
+    totalElements: pageData.totalElements ?? pageData.content.length,
+    totalPages: pageData.totalPages ?? 1
+  }
+}
+
+function resolveHasMoreChats(pageData: Page<Chat>) {
+  const meta = getPageMeta(pageData)
+
+  if (typeof meta.number === 'number' && typeof meta.totalPages === 'number') {
+    return meta.number + 1 < meta.totalPages
+  }
+
+  if (typeof pageData.last === 'boolean') {
+    return !pageData.last
+  }
+
+  if (typeof meta.totalElements === 'number') {
+    return pageData.content.length < meta.totalElements
+  }
+
+  return pageData.content.length >= meta.size
+}
+
 export const useChatsStore = defineStore('chats', {
   state: () => ({
     chats: [] as Chat[],
     messages: {} as Record<string, ChatMessage[]>,
     activeChatId: null as string | null,
-    loading: false
+    loading: false,
+    chatsLoading: false,
+    chatsLoadingMore: false,
+    chatsInitialized: false,
+    chatsPage: 0,
+    chatsPageSize: 20,
+    hasMoreChats: true
   }),
 
   getters: {
@@ -20,15 +70,84 @@ export const useChatsStore = defineStore('chats', {
 
   actions: {
     /** Get chats list */
-    async fetchChats(size = 10) {
-      this.loading = true
+    async fetchChats({
+      page = 0,
+      size,
+      append = false
+    }: {
+      page?: number
+      size?: number
+      append?: boolean
+    } = {}) {
+      if (append) {
+        if (this.chatsLoadingMore || !this.hasMoreChats) return this.chats
+        this.chatsLoadingMore = true
+      } else {
+        if (this.chatsLoading) return this.chats
+        this.chatsLoading = true
+      }
+
       try {
         const api = useApi()
-        const res = await api.get<GetChatsRs>('/chats', { query: { size } })
-        this.chats = res.chats.content
+        const nextSize = size ?? this.chatsPageSize
+        const res = await api.get<GetChatsRs>('/chats', { query: { page, size: nextSize } })
+        const meta = getPageMeta(res.chats)
+
+        this.chats = append ? mergeChats(this.chats, res.chats.content) : res.chats.content
+        this.chatsPage = meta.number
+        this.chatsPageSize = meta.size
+        this.hasMoreChats = resolveHasMoreChats(res.chats)
+        this.chatsInitialized = true
+        return this.chats
       } finally {
-        this.loading = false
+        if (append) {
+          this.chatsLoadingMore = false
+        } else {
+          this.chatsLoading = false
+        }
       }
+    },
+
+    async initializeChats(size?: number) {
+      return this.fetchChats({ page: 0, size: size ?? this.chatsPageSize })
+    },
+
+    async refreshChats() {
+      const loadedChatsCount = Math.max(this.chats.length, this.chatsPageSize)
+      return this.fetchChats({ page: 0, size: loadedChatsCount })
+    },
+
+    async loadNextChatsPage() {
+      if (!this.chatsInitialized) {
+        return this.initializeChats()
+      }
+
+      if (!this.hasMoreChats) return this.chats
+
+      return this.fetchChats({
+        page: this.chatsPage + 1,
+        size: this.chatsPageSize,
+        append: true
+      })
+    },
+
+    async ensureChatLoaded(chatId: string) {
+      let chat = this.chats.find((item) => item.id === chatId)
+      if (chat) return chat
+
+      if (!this.chatsInitialized) {
+        await this.initializeChats()
+        chat = this.chats.find((item) => item.id === chatId)
+        if (chat) return chat
+      }
+
+      while (this.hasMoreChats) {
+        await this.loadNextChatsPage()
+        chat = this.chats.find((item) => item.id === chatId)
+        if (chat) return chat
+      }
+
+      return undefined
     },
 
     /** Create new chat */
@@ -43,13 +162,14 @@ export const useChatsStore = defineStore('chats', {
           id: res.chatId,
           title: res.title,
           modelName: res.modelName,
-          ragSpace: payload.ragSpace
+          ragSpaces: payload.ragSpaces
         }
 
-        this.chats.unshift(chat)
+        this.chats = mergeChats([chat], this.chats)
         this.activeChatId = chat.id
         await router.push({ name: 'chats-id', params: { id: chat.id } })
         this.messages[chat.id] = []
+        this.chatsInitialized = true
         return chat
       } finally {
         this.loading = false

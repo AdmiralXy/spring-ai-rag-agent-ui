@@ -12,13 +12,21 @@ const { notify } = useNotification()
 
 const chatId = router.currentRoute.value.params.id as string
 chatsStore.activeChatId = chatId
+await chatsStore.ensureChatLoaded(chatId)
 await chatsStore.loadHistory(chatId)
 
 const messagesContainer = ref<HTMLDivElement | null>(null)
 
 const currentChat = computed(() => chatsStore.activeChat)
-const currentSpace = computed(() =>
-  currentChat.value ? spacesStore.getById(currentChat.value.ragSpace) : null
+const currentSpaces = computed(() =>
+  currentChat.value
+    ? currentChat.value.ragSpaces
+        .map((spaceId) => spacesStore.getById(spaceId))
+        .filter((space): space is Space => Boolean(space))
+    : []
+)
+const currentSpacesLabel = computed(() =>
+  currentSpaces.value.map((space) => space.name).join(', ')
 )
 
 const modelsStore = useModelsStore()
@@ -106,12 +114,12 @@ async function handleSend(payload: { text: string; files: File[] }) {
   })
 
   if (isFirstMessageInChat) {
-    await chatsStore.fetchChats(10000)
+    await chatsStore.refreshChats()
 
     const updatedTitle = chatsStore.chats.find((chat) => chat.id === chatId)?.title
     if (previousTitle && updatedTitle === previousTitle) {
       await new Promise((resolve) => setTimeout(resolve, 600))
-      await chatsStore.fetchChats(10000)
+      await chatsStore.refreshChats()
     }
   }
 }
@@ -120,7 +128,9 @@ async function handleSend(payload: { text: string; files: File[] }) {
 <template>
   <div class="chat-area">
     <client-only>
-      <div v-if="currentSpace" class="chat-area__space-label">Space: {{ currentSpace.name }}</div>
+      <div v-if="currentSpaces.length" class="chat-area__space-label">
+        Spaces: {{ currentSpacesLabel }}
+      </div>
       <div class="chat-area__model-input">
         <USelectMenu
           v-model="selectedModel"

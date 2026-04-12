@@ -2,48 +2,76 @@
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { useRouter } from 'vue-router'
 
+const MAX_SELECTED_SPACES = 5
+
 const { confirm } = useConfirmDialog()
 const chatsStore = useChatsStore()
 const spacesStore = useSpacesStore()
 
 await useAsyncData('spaces', async () => {
-  await spacesStore.fetchSpaces(1000)
+  if (!spacesStore.spaces.length) {
+    await spacesStore.fetchSpaces(1000)
+  }
   return spacesStore.spaces
 })
 
 await useAsyncData('chats', async () => {
-  await chatsStore.fetchChats(10000)
+  if (!chatsStore.chatsInitialized) {
+    await chatsStore.initializeChats()
+  }
   return chatsStore.chats
 })
 
 const router = useRouter()
 
 const creating = ref(false)
+const chatsListRef = ref<HTMLElement | null>(null)
+const selectedSpaces = ref<string[]>([])
 
-const selectedSpace = ref<
-  | {
-      label: string
-      value: string
-    }
-  | undefined
->(undefined)
+const selectItems = computed(() =>
+  spacesStore.spaces.map((space) => ({
+    label: space.name,
+    value: space.id,
+    disabled:
+      selectedSpaces.value.length >= MAX_SELECTED_SPACES &&
+      !selectedSpaces.value.includes(space.id)
+  }))
+)
 
-const selectItems = computed(() => [
-  { label: 'None', value: '0' },
-  ...spacesStore.spaces.map((s) => ({ label: s.name, value: s.id }))
-])
+const selectedSpacesLabel = computed(() => {
+  if (!selectedSpaces.value.length) return 'Without spaces'
+
+  return spacesStore.spaces
+    .filter((space) => selectedSpaces.value.includes(space.id))
+    .map((space) => space.name)
+    .join(', ')
+})
+
+async function loadMoreChats() {
+  if (chatsStore.chatsLoading || chatsStore.chatsLoadingMore || !chatsStore.hasMoreChats) return
+  await chatsStore.loadNextChatsPage()
+}
+
+function onChatsScroll() {
+  const container = chatsListRef.value
+  if (!container) return
+
+  const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+  if (distanceToBottom <= 80) {
+    void loadMoreChats()
+  }
+}
 
 async function onCreateChatClick() {
   if (!creating.value) {
     creating.value = true
+    await nextTick()
     return
   }
-  if (selectedSpace.value) {
-    await chatsStore.createChat({ ragSpace: selectedSpace.value.value })
-    await router.push({ name: 'chats-id', params: { id: chatsStore.activeChatId } })
-  }
+
+  await chatsStore.createChat({ ragSpaces: [...selectedSpaces.value] })
   creating.value = false
-  selectedSpace.value = undefined
+  selectedSpaces.value = []
 }
 
 const onRemoveChatClick = async (e: Event, id: string) => {
@@ -64,13 +92,40 @@ const onRemoveChatClick = async (e: Event, id: string) => {
 const emit = defineEmits(['navigate'])
 
 function openChat(id: string) {
+  creating.value = false
+  selectedSpaces.value = []
   router.push({ name: 'chats-id', params: { id } })
   emit('navigate')
 }
 
 function navigate() {
+  creating.value = false
+  selectedSpaces.value = []
   emit('navigate')
 }
+
+watch(
+  selectedSpaces,
+  (value) => {
+    if (value.length > MAX_SELECTED_SPACES) {
+      selectedSpaces.value = value.slice(0, MAX_SELECTED_SPACES)
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => chatsStore.chats.length,
+  async () => {
+    await nextTick()
+    onChatsScroll()
+  }
+)
+
+onMounted(async () => {
+  await nextTick()
+  onChatsScroll()
+})
 </script>
 
 <template>
@@ -88,40 +143,41 @@ function navigate() {
 
       <button
         class="sidebar__header__button"
-        :disabled="creating && !selectedSpace"
+        :disabled="chatsStore.loading"
         @click="onCreateChatClick"
       >
         <Icon name="material-symbols:add" />
         {{ creating ? 'Confirm' : 'Create chat' }}
       </button>
 
-      <transition name="slide-fade">
-        <div v-if="creating" class="sidebar__header__select">
-          <USelectMenu
-            v-model="selectedSpace"
-            :items="selectItems"
-            option-attribute="label"
-            value-attribute="value"
-            placeholder="Select space"
-            class="w-full"
-            :ui="{
-              base: 'bg-[#181818] text-white border border-[#474747]',
-              content: 'bg-[#474747] text-white',
-              item: 'bg-[#272727] border border-[#474747]',
-              input: 'bg-[#474747] text-white',
-              leading: 'text-white',
-              trailing: 'text-white',
-              group: 'bg-[#474747] text-white',
-              placeholder: 'text-white',
-              value: 'text-white'
-            }"
-          />
-        </div>
-      </transition>
+      <div v-show="creating" class="sidebar__header__select">
+        <USelectMenu
+          v-model="selectedSpaces"
+          :items="selectItems"
+          label-key="label"
+          value-key="value"
+          multiple
+          placeholder="Select up to 5 spaces"
+          class="w-full"
+          :ui="{
+            base: 'bg-[#181818] text-white border border-[#474747]',
+            content: 'bg-[#474747] text-white',
+            item: 'bg-[#272727] border border-[#474747]',
+            input: 'bg-[#474747] text-white',
+            leading: 'text-white',
+            trailing: 'text-white',
+            group: 'bg-[#474747] text-white',
+            placeholder: 'text-white',
+            value: 'text-white'
+          }"
+        />
+        <p class="sidebar__header__hint">{{ selectedSpacesLabel }}</p>
+        <p class="sidebar__header__hint">{{ selectedSpaces.length }}/{{ MAX_SELECTED_SPACES }}</p>
+      </div>
     </div>
 
     <p class="sidebar__list-name">Chats</p>
-    <ul class="sidebar__list">
+    <ul ref="chatsListRef" class="sidebar__list" @scroll.passive="onChatsScroll">
       <li
         v-for="c in chatsStore.chats"
         :key="c.id"
@@ -133,6 +189,10 @@ function navigate() {
         <button class="sidebar__delete" @click="onRemoveChatClick($event, c.id)">
           <Icon name="material-symbols:delete-outline" />
         </button>
+      </li>
+      <li v-if="chatsStore.chatsLoadingMore" class="sidebar__status">Loading more chats...</li>
+      <li v-else-if="!chatsStore.hasMoreChats && chatsStore.chats.length" class="sidebar__status">
+        No more chats
       </li>
     </ul>
   </div>
@@ -165,12 +225,16 @@ function navigate() {
   @apply mt-1;
 }
 
+.sidebar__header__hint {
+  @apply mt-2 text-xs text-gray-400;
+}
+
 .sidebar__list-name {
   @apply mt-2 ml-4 text-[0.9rem] font-bold text-gray-400;
 }
 
 .sidebar__list {
-  @apply flex-1 overflow-y-auto p-2;
+  @apply flex-1 list-none overflow-y-auto p-2;
 }
 
 .sidebar__item {
@@ -193,12 +257,8 @@ function navigate() {
   @apply text-red-500;
 }
 
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  @apply transition-all duration-500 ease-in-out;
+.sidebar__status {
+  @apply p-3 text-center text-xs text-gray-500;
 }
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  @apply translate-y-[6px] opacity-0;
-}
+
 </style>
