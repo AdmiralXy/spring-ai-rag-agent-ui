@@ -124,7 +124,7 @@ async function createSpace() {
 }
 
 .spaces__item {
-  @apply flex cursor-pointer items-center justify-between rounded-md bg-[#1e1e1e] p-3 transition-colors duration-200;
+  @apply flex cursor-pointer items-center justify-between rounded-md border border-[#333] bg-[#1e1e1e] p-3 transition-colors duration-200;
 }
 
 .spaces__item:hover {

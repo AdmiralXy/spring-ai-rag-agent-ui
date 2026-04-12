@@ -1,12 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const emit = defineEmits<{ send: [payload: { text: string; files: File[] }] }>()
-const props = defineProps<{ loading?: boolean }>()
+const props = withDefaults(
+  defineProps<{
+    loading?: boolean
+    promptTemplates?: PromptTemplate[]
+  }>(),
+  {
+    promptTemplates: () => []
+  }
+)
 
-const text = ref('')
+const text = defineModel<string>('text', { default: '' })
 const files = ref<File[]>([])
 const inputRef = ref<HTMLInputElement | null>(null)
+const selectedPromptId = ref('')
+
+const promptItems = computed(() =>
+  props.promptTemplates.map((template) => ({
+    label: template.name,
+    value: template.id
+  }))
+)
+
+watch(selectedPromptId, (id) => {
+  if (!id) return
+
+  const selected = props.promptTemplates.find((template) => template.id === id)
+  if (!selected) return
+  text.value = selected.content
+})
 
 function submit() {
   if ((!text.value.trim() && !files.value.length) || props.loading) return
@@ -50,6 +74,23 @@ function clearFiles() {
         :disabled="props.loading"
         @change="onFileInputChange"
       />
+
+      <div v-if="promptItems.length" class="chat-input__prompts-wrap">
+        <USelectMenu
+          v-model="selectedPromptId"
+          :items="promptItems"
+          label-key="label"
+          value-key="value"
+          placeholder="Prompt template"
+          class="chat-input__prompts"
+          :disabled="props.loading"
+          :ui="{
+            base: 'bg-[#1e1e1e] text-white border border-[#3b3b3b]',
+            content: 'bg-[#242424] text-white',
+            item: 'text-white'
+          }"
+        />
+      </div>
 
       <div v-if="files.length" class="chat-input__attachments">
         <div v-for="file in files" :key="file.name" class="chat-input__attachment">
@@ -111,6 +152,14 @@ function clearFiles() {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.6rem;
+}
+
+.chat-input__prompts-wrap {
+  margin-bottom: 0.8rem;
+}
+
+.chat-input__prompts {
+  display: block;
 }
 
 .chat-input__attachment {

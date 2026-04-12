@@ -27,6 +27,26 @@ declare global {
     name: string
   }
 
+  export interface PromptTemplate {
+    id: string
+    name: string
+    content: string
+  }
+
+  export interface GetPromptTemplatesRs {
+    templates: PromptTemplate[]
+  }
+
+  export interface CreatePromptTemplateRq {
+    name: string
+    content: string
+  }
+
+  export interface UpdatePromptTemplateRq {
+    name: string
+    content: string
+  }
+
   export interface ChatHistoryRs {
     chatId: string
     messages: ChatMessage[]

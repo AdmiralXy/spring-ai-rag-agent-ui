@@ -133,8 +133,13 @@ onMounted(async () => {
       </button>
 
       <NuxtLink href="/spaces" class="sidebar__header__button" @click="navigate">
-        <Icon name="material-symbols-light:settings" />
+        <Icon name="material-symbols-light:file-copy" />
         Spaces
+      </NuxtLink>
+
+      <NuxtLink href="/prompts" class="sidebar__header__button" @click="navigate">
+        <Icon name="material-symbols:description-outline-rounded" />
+        Prompts
       </NuxtLink>
 
       <button

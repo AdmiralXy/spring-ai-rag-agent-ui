@@ -4,10 +4,12 @@ import ChatMessages from '~/components/ChatMessages.vue'
 import ChatInput from '~/components/ChatInput.vue'
 import useNotification from '~/composables/useNotification'
 import { NotificationType } from '~/types/notification'
+import { usePromptTemplatesStore } from '~/stores/usePromptTemplatesStore'
 
 const router = useRouter()
 const chatsStore = useChatsStore()
 const spacesStore = useSpacesStore()
+const promptTemplatesStore = usePromptTemplatesStore()
 const { notify } = useNotification()
 
 const chatId = router.currentRoute.value.params.id as string
@@ -16,6 +18,7 @@ await chatsStore.ensureChatLoaded(chatId)
 await chatsStore.loadHistory(chatId)
 
 const messagesContainer = ref<HTMLDivElement | null>(null)
+const draftText = ref('')
 
 const currentChat = computed(() => chatsStore.activeChat)
 const currentSpaces = computed(() =>
@@ -31,6 +34,11 @@ const modelsStore = useModelsStore()
 await useAsyncData('models', async () => {
   await modelsStore.fetchModels()
   return modelsStore.models
+})
+
+await useAsyncData('prompt-templates-chat', async () => {
+  await promptTemplatesStore.fetchPromptTemplates()
+  return promptTemplatesStore.templates
 })
 
 const models = modelsStore.models
@@ -170,7 +178,12 @@ async function handleSend(payload: { text: string; files: File[] }) {
 
     <div class="chat-area__footer">
       <client-only>
-        <ChatInput :loading="chatsStore.loading" @send="handleSend" />
+        <ChatInput
+          v-model:text="draftText"
+          :loading="chatsStore.loading"
+          :prompt-templates="promptTemplatesStore.templates"
+          @send="handleSend"
+        />
       </client-only>
     </div>
   </div>
