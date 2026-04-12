@@ -49,10 +49,8 @@ const hasFolders = computed(() => props.folders.length > 0)
 
     <div class="space-auth-card space-auth-card--optional">
       <div class="space-section-copy">
-        <p class="space-section-title">Git authentication</p>
-        <p class="space-section-note">
-          Optional for public repositories. Saved locally in this browser.
-        </p>
+        <p class="space-section-title">Authentication</p>
+        <p class="space-section-note">Optional for public repositories.</p>
       </div>
 
       <div class="space-field-grid">
@@ -62,7 +60,7 @@ const hasFolders = computed(() => props.folders.length > 0)
             :value="props.login"
             type="text"
             autocomplete="username"
-            placeholder="git-user"
+            placeholder="Username"
             class="space-field-input"
             :disabled="props.disabled"
             @input="emit('update:login', ($event.target as HTMLInputElement).value)"
@@ -170,20 +168,12 @@ const hasFolders = computed(() => props.folders.length > 0)
 @import 'tailwindcss/theme';
 
 .space-provider-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+  @apply flex flex-col gap-[0.9rem];
 }
 
 .space-compact-field {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.85rem;
-  border: 1px solid #333;
-  border-radius: 1rem;
+  @apply flex w-full items-center gap-[0.85rem] rounded-[1rem] border border-[#333] px-3 py-2;
   background: linear-gradient(180deg, #141414 0%, #101010 100%);
-  padding: 0.5rem 0.75rem;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -195,13 +185,7 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-compact-icon {
-  display: inline-flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
+  @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full;
   background: rgba(59, 130, 246, 0.14);
   color: #93c5fd;
 }
@@ -212,12 +196,7 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-compact-input {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: #fff;
-  outline: none;
-  font-size: 0.95rem;
+  @apply w-full border-none bg-transparent text-[0.95rem] text-white outline-none;
 }
 
 .space-compact-input::placeholder {
@@ -225,13 +204,9 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-auth-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  border: 1px solid rgba(59, 130, 246, 0.14);
-  border-radius: 1rem;
+  @apply flex flex-col gap-[0.9rem] rounded-[1rem] border p-4;
+  border-color: rgba(59, 130, 246, 0.14);
   background: linear-gradient(180deg, rgba(20, 20, 20, 0.96) 0%, rgba(14, 14, 14, 0.98) 100%);
-  padding: 1rem;
 }
 
 .space-auth-card--optional {
@@ -239,59 +214,42 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-section-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  @apply flex flex-col gap-[0.2rem];
 }
 
 .space-section-title {
-  color: #f3f4f6;
-  font-size: 0.95rem;
-  font-weight: 600;
+  @apply text-[0.95rem] font-semibold text-gray-100;
 }
 
 .space-section-note,
 .space-status {
-  font-size: 0.82rem;
-  line-height: 1.45;
+  @apply text-[0.82rem] leading-[1.45];
 }
 
 .space-section-note {
-  color: #9ca3af;
+  @apply text-gray-400;
 }
 
 .space-status--error {
-  color: #fca5a5;
+  @apply text-red-300;
 }
 
 .space-field-grid,
 .space-git-grid {
-  display: grid;
-  gap: 0.85rem;
+  @apply grid gap-[0.85rem];
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .space-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  @apply flex flex-col gap-[0.45rem];
 }
 
 .space-field-label {
-  color: #d1d5db;
-  font-size: 0.82rem;
-  font-weight: 500;
+  @apply text-[0.82rem] font-medium text-gray-300;
 }
 
 .space-field-input {
-  width: 100%;
-  border: 1px solid #333;
-  border-radius: 0.9rem;
-  background: #101010;
-  color: #fff;
-  outline: none;
-  padding: 0.8rem 0.95rem;
-  font-size: 0.92rem;
+  @apply w-full rounded-[0.9rem] border border-[#333] bg-[#101010] px-[0.95rem] py-[0.8rem] text-[0.92rem] text-white outline-none;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -320,45 +278,37 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-select:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+  @apply cursor-not-allowed opacity-70;
 }
 
 .space-git-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  @apply flex flex-wrap items-center justify-between gap-3;
 }
 
 .space-folder-field {
-  display: flex;
-  align-items: end;
-  gap: 0.6rem;
+  @apply flex items-end gap-[0.6rem];
 }
 
 .space-folder-field .space-field {
-  flex: 1;
+  @apply flex-1;
 }
 
 .space-folder-clear {
-  margin-bottom: 0.1rem;
+  @apply mb-[0.1rem];
 }
 
 @media (max-width: 768px) {
   .space-field-grid,
   .space-git-grid {
-    grid-template-columns: minmax(0, 1fr);
+    @apply grid-cols-1;
   }
 
   .space-folder-field {
-    flex-direction: column;
-    align-items: stretch;
+    @apply flex-col items-stretch;
   }
 
   .space-git-toolbar {
-    align-items: stretch;
+    @apply items-stretch;
   }
 }
 </style>

@@ -49,18 +49,11 @@ function selectProvider(value: UploadProvider) {
 @import 'tailwindcss/theme';
 
 .space-provider-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.875rem;
+  @apply flex flex-wrap gap-3.5;
 }
 
 .space-provider-selector__button {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  border: none;
-  background: transparent;
+  @apply inline-flex flex-col items-center gap-2 border-none bg-transparent;
   color: #a9a9a9;
   cursor: pointer;
   transition:
@@ -74,18 +67,11 @@ function selectProvider(value: UploadProvider) {
 }
 
 .space-provider-selector__button:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
+  @apply cursor-not-allowed opacity-[0.65];
 }
 
 .space-provider-selector__icon-wrap {
-  display: inline-flex;
-  width: 3.25rem;
-  height: 3.25rem;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #3a3a3a;
-  border-radius: 999px;
+  @apply inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-full border border-[#3a3a3a];
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.07), transparent 62%),
     linear-gradient(180deg, #2c2c2c 0%, #171717 100%);
@@ -109,12 +95,11 @@ function selectProvider(value: UploadProvider) {
 }
 
 .space-provider-selector__icon {
-  font-size: 1.35rem;
+  @apply text-[1.35rem];
 }
 
 .space-provider-selector__label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  @apply text-[0.8rem] font-semibold;
   letter-spacing: 0.01em;
 }
 </style>
