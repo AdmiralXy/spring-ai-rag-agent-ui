@@ -24,7 +24,7 @@ const buildDate = computed(() => {
   }
 
   const [, yyyy, mm, dd] = match
-  return `${mm}.${dd}.${yyyy}`
+  return `${dd}.${mm}.${yyyy}`
 })
 </script>
 
