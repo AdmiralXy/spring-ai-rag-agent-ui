@@ -33,8 +33,7 @@ const selectItems = computed(() =>
     label: space.name,
     value: space.id,
     disabled:
-      selectedSpaces.value.length >= MAX_SELECTED_SPACES &&
-      !selectedSpaces.value.includes(space.id)
+      selectedSpaces.value.length >= MAX_SELECTED_SPACES && !selectedSpaces.value.includes(space.id)
   }))
 )
 
@@ -260,5 +259,4 @@ onMounted(async () => {
 .sidebar__status {
   @apply p-3 text-center text-xs text-gray-500;
 }
-
 </style>

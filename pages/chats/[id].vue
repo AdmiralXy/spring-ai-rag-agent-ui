@@ -25,9 +25,7 @@ const currentSpaces = computed(() =>
         .filter((space): space is Space => Boolean(space))
     : []
 )
-const currentSpacesLabel = computed(() =>
-  currentSpaces.value.map((space) => space.name).join(', ')
-)
+const currentSpacesLabel = computed(() => currentSpaces.value.map((space) => space.name).join(', '))
 
 const modelsStore = useModelsStore()
 await useAsyncData('models', async () => {
