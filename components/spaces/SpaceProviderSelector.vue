@@ -1,11 +1,5 @@
 <script setup lang="ts">
-type UploadProvider = 'text' | 'files' | 'confluence' | 'git'
-
-interface ProviderOption {
-  value: UploadProvider
-  label: string
-  icon: string
-}
+import type { ProviderOption, UploadProvider } from '~/types/spaceUpload'
 
 const props = defineProps<{
   modelValue: UploadProvider
@@ -52,6 +46,8 @@ function selectProvider(value: UploadProvider) {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .space-provider-selector {
   display: flex;
   flex-wrap: wrap;

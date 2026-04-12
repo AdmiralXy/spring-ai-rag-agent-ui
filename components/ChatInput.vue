@@ -90,6 +90,8 @@ function clearFiles() {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .chat-input {
   display: flex;
 }

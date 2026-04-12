@@ -104,6 +104,8 @@ function clearFiles() {
 </template>
 
 <style scoped>
+@import 'tailwindcss/theme';
+
 .space-file-dropzone {
   display: flex;
   flex-direction: column;

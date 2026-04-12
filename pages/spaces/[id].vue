@@ -5,16 +5,14 @@ import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import useNotification from '~/composables/useNotification'
 import { NotificationType } from '~/types/notification'
+import type { ProviderOption, UploadProvider } from '~/types/spaceUpload'
 import LayoutWrapper from '~/components/layout/LayoutWrapper.vue'
-import SpaceFileDropzone from '~/components/spaces/SpaceFileDropzone.vue'
 import SpaceProviderSelector from '~/components/spaces/SpaceProviderSelector.vue'
+import SpaceConfluenceProvider from '~/components/spaces/providers/SpaceConfluenceProvider.vue'
+import SpaceFilesProvider from '~/components/spaces/providers/SpaceFilesProvider.vue'
+import SpaceGitProvider from '~/components/spaces/providers/SpaceGitProvider.vue'
+import SpaceTextProvider from '~/components/spaces/providers/SpaceTextProvider.vue'
 
-type UploadProvider = 'text' | 'files' | 'confluence' | 'git'
-type ProviderOption = {
-  value: UploadProvider
-  label: string
-  icon: string
-}
 type PersistedAuthStorageKey = 'confluence' | 'git'
 
 const route = useRoute()
@@ -31,6 +29,15 @@ const AUTH_STORAGE_KEYS: Record<PersistedAuthStorageKey, string> = {
   confluence: 'space-upload-auth:confluence',
   git: 'space-upload-auth:git'
 }
+
+const providerOptions: ProviderOption[] = [
+  { value: 'text', label: 'Content', icon: 'material-symbols:text-snippet-outline-rounded' },
+  { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
+  { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' },
+  { value: 'git', label: 'Git', icon: 'mdi:git' }
+]
+
+const palette = ['#34d399', '#60a5fa', '#f472b6', '#facc15', '#fb923c', '#a78bfa', '#4ade80']
 
 const spaceId = route.params.id as string
 const space = computed(() => spacesStore.getById(spaceId))
@@ -57,13 +64,7 @@ const batch = ref(true)
 const uploading = ref(false)
 const progress = ref(0)
 const creating = ref(false)
-
-const providerOptions: ProviderOption[] = [
-  { value: 'text', label: 'Content', icon: 'material-symbols:text-snippet-outline-rounded' },
-  { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
-  { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' },
-  { value: 'git', label: 'Git', icon: 'mdi:git' }
-]
+const docColors = ref<Record<string, { label: string; color: string }>>({})
 
 const availableProviders = computed<UploadProvider[]>(() => {
   const raw = String(config.public.spaceUploadProviders ?? '').trim()
@@ -87,7 +88,6 @@ const availableProviderOptions = computed(() =>
 const isPlainTextProvider = computed(() => provider.value === 'text')
 const isConfluenceProvider = computed(() => provider.value === 'confluence')
 const isGitProvider = computed(() => provider.value === 'git')
-const hasGitFolders = computed(() => gitFolders.value.length > 0)
 const canLoadGitInfo = computed(() => {
   if (!gitUrl.value.trim()) return false
   if (hasPartialAuth(gitLogin.value, gitPassword.value)) return false
@@ -123,6 +123,7 @@ await useAsyncData(`spaces-${spaceId}`, async () => {
   if (!spacesStore.spaces.length) await spacesStore.fetchSpaces(1000)
   return spacesStore.spaces
 })
+
 await useAsyncData(`documents-${spaceId}`, async () => {
   await ragStore.fetchDocuments(spaceId, 1000)
   return ragStore.getDocsBySpace(spaceId)
@@ -425,6 +426,7 @@ async function addContent() {
   uploading.value = true
   progress.value = 0
   let lastFetchAt = 0
+
   try {
     await ragStore.addDocumentStream(spaceId, payload, async (p: number) => {
       progress.value = p
@@ -433,6 +435,7 @@ async function addContent() {
         lastFetchAt = p
       }
     })
+
     await ragStore.fetchDocuments(spaceId, 1000)
     resetCreateForm()
     creating.value = false
@@ -456,9 +459,6 @@ async function deleteDocument(docId: string) {
   if (ok) await ragStore.deleteDocument(spaceId, docId)
 }
 
-const palette = ['#34d399', '#60a5fa', '#f472b6', '#facc15', '#fb923c', '#a78bfa', '#4ade80']
-const docColors = ref<Record<string, { label: string; color: string }>>({})
-
 function hashString(str: string): number {
   let hash = 0
   for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i)
@@ -474,6 +474,7 @@ function getDocStyle(meta: RagDocumentMetadata) {
     const color = palette[index] as string
     docColors.value[groupId] = { label, color }
   }
+
   return docColors.value[groupId]
 }
 </script>
@@ -505,194 +506,50 @@ function getDocStyle(meta: RagDocumentMetadata) {
           :disabled="uploading"
         />
 
-        <textarea
+        <SpaceTextProvider
           v-if="isPlainTextProvider"
           v-model="newText"
-          rows="4"
-          placeholder="Inspiration is a guest that does not willingly visit the lazy..."
-          class="space__input"
           :disabled="uploading"
-          @keyup.enter.exact="addContent"
+          @submit="addContent"
         />
 
-        <div v-else-if="isConfluenceProvider" class="space__provider-panel">
-          <label class="space__compact-field">
-            <span class="space__compact-icon">
-              <Icon name="simple-icons:confluence" />
-            </span>
-            <input
-              v-model="confluenceUrl"
-              type="url"
-              placeholder="https://confluence.example.com/..."
-              class="space__compact-input"
-              :disabled="uploading"
-              @keyup.enter.exact="addContent"
-            />
-          </label>
+        <SpaceConfluenceProvider
+          v-else-if="isConfluenceProvider"
+          :url="confluenceUrl"
+          :login="confluenceLogin"
+          :password="confluencePassword"
+          :disabled="uploading"
+          @update:url="confluenceUrl = $event"
+          @update:login="confluenceLogin = $event"
+          @update:password="confluencePassword = $event"
+          @submit="addContent"
+        />
 
-          <div class="space__auth-card">
-            <div class="space__section-copy">
-              <p class="space__section-title">Authentication</p>
-            </div>
+        <SpaceGitProvider
+          v-else-if="isGitProvider"
+          :url="gitUrl"
+          :branch="gitBranch"
+          :folder="gitFolder"
+          :login="gitLogin"
+          :password="gitPassword"
+          :branches="gitBranches"
+          :folders="gitFolders"
+          :info-loading="gitInfoLoading"
+          :info-loaded="gitInfoLoaded"
+          :info-error="gitInfoError"
+          :info-summary="gitInfoSummary"
+          :disabled="uploading"
+          :can-load-info="canLoadGitInfo"
+          @update:url="gitUrl = $event"
+          @update:branch="gitBranch = $event"
+          @update:folder="gitFolder = $event"
+          @update:login="gitLogin = $event"
+          @update:password="gitPassword = $event"
+          @load-info="loadGitInfo"
+          @clear-folder="clearGitFolder"
+        />
 
-            <div class="space__field-grid">
-              <label class="space__field">
-                <span class="space__field-label">Login</span>
-                <input
-                  v-model="confluenceLogin"
-                  type="text"
-                  autocomplete="username"
-                  placeholder="Username"
-                  class="space__field-input"
-                  :disabled="uploading"
-                  @keyup.enter.exact="addContent"
-                />
-              </label>
-
-              <label class="space__field">
-                <span class="space__field-label">Password</span>
-                <input
-                  v-model="confluencePassword"
-                  type="password"
-                  autocomplete="current-password"
-                  placeholder="••••••••"
-                  class="space__field-input"
-                  :disabled="uploading"
-                  @keyup.enter.exact="addContent"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="isGitProvider" class="space__provider-panel">
-          <label class="space__compact-field">
-            <span class="space__compact-icon space__compact-icon--git">
-              <Icon name="mdi:git" />
-            </span>
-            <input
-              v-model="gitUrl"
-              type="url"
-              placeholder="https://github.com/org/repo.git"
-              class="space__compact-input"
-              :disabled="uploading"
-              @keyup.enter.exact="loadGitInfo"
-            />
-          </label>
-
-          <div class="space__auth-card space__auth-card--optional">
-            <div class="space__section-copy">
-              <p class="space__section-title">Authentication</p>
-              <p class="space__section-note">Optional for public repositories.</p>
-            </div>
-
-            <div class="space__field-grid">
-              <label class="space__field">
-                <span class="space__field-label">Login</span>
-                <input
-                  v-model="gitLogin"
-                  type="text"
-                  autocomplete="username"
-                  placeholder="Username"
-                  class="space__field-input"
-                  :disabled="uploading"
-                  @keyup.enter.exact="loadGitInfo"
-                />
-              </label>
-
-              <label class="space__field">
-                <span class="space__field-label">Password</span>
-                <input
-                  v-model="gitPassword"
-                  type="password"
-                  autocomplete="current-password"
-                  placeholder="••••••••"
-                  class="space__field-input"
-                  :disabled="uploading"
-                  @keyup.enter.exact="loadGitInfo"
-                />
-              </label>
-            </div>
-          </div>
-
-          <div class="space__git-toolbar">
-            <UButton
-              color="neutral"
-              variant="soft"
-              size="sm"
-              icon="mdi:source-branch"
-              :loading="gitInfoLoading"
-              :disabled="!canLoadGitInfo"
-              @click="loadGitInfo"
-            >
-              {{ gitInfoLoading ? 'Loading repository...' : 'Load branches and folders' }}
-            </UButton>
-
-            <p v-if="gitInfoSummary" class="space__section-note">{{ gitInfoSummary }}</p>
-            <p v-else-if="gitInfoError" class="space__status space__status--error">
-              {{ gitInfoError }}
-            </p>
-          </div>
-
-          <div class="space__git-grid">
-            <label class="space__field">
-              <span class="space__field-label">Branch</span>
-              <select
-                v-model="gitBranch"
-                class="space__field-input space__select"
-                :disabled="uploading || gitInfoLoading || !gitBranches.length"
-              >
-                <option value="" disabled>
-                  {{
-                    gitInfoLoading
-                      ? 'Loading branches...'
-                      : gitBranches.length
-                        ? 'Select branch'
-                        : 'Load repository info first'
-                  }}
-                </option>
-                <option v-for="branch in gitBranches" :key="branch" :value="branch">
-                  {{ branch }}
-                </option>
-              </select>
-            </label>
-
-            <div class="space__folder-field">
-              <label class="space__field">
-                <span class="space__field-label">Folder</span>
-                <select
-                  v-model="gitFolder"
-                  class="space__field-input space__select"
-                  :disabled="uploading || gitInfoLoading || !gitInfoLoaded"
-                >
-                  <option value="">Repository root</option>
-                  <option v-for="folder in gitFolders" :key="folder" :value="folder">
-                    {{ folder }}
-                  </option>
-                </select>
-              </label>
-
-              <UButton
-                v-if="gitFolder"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                icon="material-symbols:close-small"
-                class="space__folder-clear"
-                :disabled="uploading || gitInfoLoading"
-                @click="clearGitFolder"
-              >
-                Clear
-              </UButton>
-            </div>
-          </div>
-
-          <p v-if="gitInfoLoaded && !hasGitFolders" class="space__section-note">
-            Folder is optional. If you leave it empty, the backend will use the repository root.
-          </p>
-        </div>
-
-        <SpaceFileDropzone v-else v-model="files" :disabled="uploading" />
+        <SpaceFilesProvider v-else v-model="files" :disabled="uploading" />
 
         <div class="space__create-actions">
           <UButton
@@ -724,7 +581,6 @@ function getDocStyle(meta: RagDocumentMetadata) {
       </div>
     </transition>
 
-    <!-- ✅ Контейнер со скроллом -->
     <div class="space__scroll-container">
       <ul v-if="loading" class="space__list">
         <li v-for="n in 3" :key="n" class="space__item">
@@ -779,31 +635,30 @@ function getDocStyle(meta: RagDocumentMetadata) {
 }
 
 .space__list {
-  @apply flex flex-col gap-2;
+  @apply flex max-w-full flex-col gap-2;
   overflow-x: hidden;
-  max-width: 100%;
 }
 
 .space__item {
-  @apply relative flex flex-col rounded-md bg-[#1e1e1e] p-4 transition-colors duration-200;
-  overflow: hidden;
+  @apply relative flex max-w-full flex-col overflow-hidden rounded-md bg-[#1e1e1e] p-4 transition-colors duration-200;
   box-sizing: border-box;
-  max-width: 100%;
 }
+
 .space__item:hover {
   @apply bg-[#2a2a2a];
 }
 
 .space__content {
   @apply mt-9 flex-1 pr-8 text-sm leading-snug break-words whitespace-pre-wrap text-white;
-  word-break: break-word;
   overflow-wrap: anywhere;
+  word-break: break-word;
   max-width: 100%;
 }
 
 .space__doc-label {
   @apply absolute top-2 right-2 flex items-center gap-1;
 }
+
 .space__label {
   @apply rounded px-2 py-1 text-xs font-bold text-black;
 }
@@ -816,9 +671,11 @@ function getDocStyle(meta: RagDocumentMetadata) {
 .space__delete-all {
   @apply cursor-pointer border-none bg-transparent p-1 text-xl text-gray-400 transition-colors duration-200;
 }
+
 .space__delete:hover {
   @apply text-red-500;
 }
+
 .space__delete-all:hover {
   @apply text-amber-500;
 }
@@ -826,177 +683,19 @@ function getDocStyle(meta: RagDocumentMetadata) {
 .space__create {
   @apply mb-5 flex flex-col gap-3 rounded-xl border border-[#333] bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 shadow-md;
 }
-.space__provider-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-}
-.space__input {
-  min-height: 7.5rem;
-  @apply flex-1 resize-y rounded-md border border-[#333] bg-[#111] px-4 py-3 text-white transition-all duration-200 outline-none;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  border-radius: 1rem;
-}
-.space__input:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
-}
-.space__compact-field {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  width: 100%;
-  border: 1px solid #333;
-  border-radius: 1rem;
-  background: linear-gradient(180deg, #141414 0%, #101010 100%);
-  padding: 0.5rem 0.75rem;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-.space__compact-field:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
-}
-.space__compact-icon {
-  display: inline-flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
-  flex-shrink: 0;
-}
-.space__compact-icon--git {
-  background: rgba(249, 115, 22, 0.14);
-  color: #fdba74;
-}
-.space__compact-input {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: #fff;
-  outline: none;
-  font-size: 0.95rem;
-}
-.space__compact-input::placeholder {
-  color: #6b7280;
-}
-.space__auth-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  border: 1px solid rgba(59, 130, 246, 0.14);
-  border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(20, 20, 20, 0.96) 0%, rgba(14, 14, 14, 0.98) 100%);
-  padding: 1rem;
-}
-.space__auth-card--optional {
-  border-color: rgba(249, 115, 22, 0.14);
-}
-.space__section-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.space__section-title {
-  color: #f3f4f6;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-.space__section-note {
-  color: #9ca3af;
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-.space__status {
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-.space__status--error {
-  color: #fca5a5;
-}
-.space__field-grid,
-.space__git-grid {
-  display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.space__field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-.space__field-label {
-  color: #d1d5db;
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-.space__field-input {
-  width: 100%;
-  border: 1px solid #333;
-  border-radius: 0.9rem;
-  background: #101010;
-  color: #fff;
-  outline: none;
-  padding: 0.8rem 0.95rem;
-  font-size: 0.92rem;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-.space__field-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
-}
-.space__field-input::placeholder {
-  color: #6b7280;
-}
-.space__select {
-  appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, #9ca3af 50%),
-    linear-gradient(135deg, #9ca3af 50%, transparent 50%);
-  background-position:
-    calc(100% - 18px) calc(50% - 1px),
-    calc(100% - 12px) calc(50% - 1px);
-  background-repeat: no-repeat;
-  background-size: 6px 6px;
-  padding-right: 2.5rem;
-}
-.space__select:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-.space__git-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  justify-content: space-between;
-}
-.space__folder-field {
-  display: flex;
-  align-items: end;
-  gap: 0.6rem;
-}
-.space__folder-field .space__field {
-  flex: 1;
-}
-.space__folder-clear {
-  margin-bottom: 0.1rem;
-}
+
 .space__create-actions {
   @apply flex flex-wrap items-center justify-between gap-2;
 }
+
 .space__batching {
   @apply text-sm text-gray-400;
 }
+
 .space__progress {
   @apply mb-4;
 }
+
 .space__progress-text {
   @apply mt-1 text-right text-xs text-gray-400;
 }
@@ -1005,32 +704,19 @@ function getDocStyle(meta: RagDocumentMetadata) {
 .slide-fade-leave-active {
   @apply transition-all duration-300 ease-in-out;
 }
+
 .slide-fade-enter-from,
 .slide-fade-leave-to {
   @apply translate-y-3 opacity-0;
 }
+
 .fade-enter-active,
 .fade-leave-active {
   @apply transition-opacity duration-300 ease-in-out;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   @apply opacity-0;
-}
-
-@media (max-width: 768px) {
-  .space__field-grid,
-  .space__git-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .space__folder-field {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .space__git-toolbar {
-    align-items: stretch;
-  }
 }
 </style>
