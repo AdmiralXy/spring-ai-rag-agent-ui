@@ -143,18 +143,17 @@ const hasFolders = computed(() => props.folders.length > 0)
           </select>
         </label>
 
-        <UButton
+        <button
           v-if="props.folder"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          icon="material-symbols:close-small"
+          type="button"
           class="space-folder-clear"
           :disabled="props.disabled || props.infoLoading"
+          aria-label="Clear selected folder"
           @click="emit('clear-folder')"
         >
-          Clear
-        </UButton>
+          <Icon name="material-symbols:close-small" />
+          <span>Clear</span>
+        </button>
       </div>
     </div>
 
@@ -286,7 +285,7 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-folder-field {
-  @apply flex items-end gap-[0.6rem];
+  @apply flex items-end gap-[0.55rem];
 }
 
 .space-folder-field .space-field {
@@ -294,7 +293,33 @@ const hasFolders = computed(() => props.folders.length > 0)
 }
 
 .space-folder-clear {
-  @apply mb-[0.1rem];
+  @apply inline-flex h-[2.7rem] shrink-0 items-center gap-1 rounded-[0.75rem] border border-[#2f2f2f] px-3 text-[0.78rem] font-medium text-gray-300;
+  background: #151515;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.space-folder-clear:hover:not(:disabled) {
+  border-color: #3a3a3a;
+  color: #e5e7eb;
+  background: #1a1a1a;
+}
+
+.space-folder-clear:focus-visible {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
+}
+
+.space-folder-clear:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.space-folder-clear:disabled {
+  @apply cursor-not-allowed opacity-60;
 }
 
 @media (max-width: 768px) {
@@ -305,6 +330,10 @@ const hasFolders = computed(() => props.folders.length > 0)
 
   .space-folder-field {
     @apply flex-col items-stretch;
+  }
+
+  .space-folder-clear {
+    @apply w-full justify-center;
   }
 
   .space-git-toolbar {
