@@ -17,6 +17,14 @@ export default defineNuxtConfig({
     ]
   ],
   css: ['~/assets/css/main.css'],
+  icon: {
+    provider: 'server',
+    serverBundle: 'local',
+    fallbackToApi: false,
+    clientBundle: {
+      scan: true
+    }
+  },
   runtimeConfig: {
     apiBase: 'http://localhost:8080/api/agent',
     public: {

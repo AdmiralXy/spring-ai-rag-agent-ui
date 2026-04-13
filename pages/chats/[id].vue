@@ -190,7 +190,7 @@ async function handleSend(payload: { text: string; files: File[] }) {
       <template v-else>
         <div class="empty-state">
           <div class="empty-state__icon">
-            <Icon name="pixel:face-thinking-solid"></Icon>
+            <Icon name="material-symbols:lightbulb-outline-rounded"></Icon>
           </div>
           <div class="empty-state__text">Write your first message!</div>
         </div>
