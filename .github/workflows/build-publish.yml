@@ -52,7 +52,7 @@ jobs:
 
       - name: Save Docker image to tar.gz
         run: |
-          docker save -o agent-ui.tar "${IMAGE_TAG}"
+          docker save -o agent-ui.tar "${IMAGE_NAME}:latest"
           gzip agent-ui.tar
 
       - name: Create or update release "Latest"
