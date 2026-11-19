@@ -3,23 +3,6 @@ import { useApi } from '~/composables/useApi'
 
 const DEFAULT_PAGE_SIZE = 20
 
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
-}
-
-function splitFileName(fileName: string): { name: string; extension: string } {
-  const dot = fileName.lastIndexOf('.')
-  if (dot > 0 && dot < fileName.length - 1) {
-    return { name: fileName.slice(0, dot), extension: fileName.slice(dot + 1) }
-  }
-  return { name: fileName, extension: 'bin' }
-}
-
 export const useFilesStore = defineStore('files', {
   state: () => ({
     files: [] as FileRs[],
@@ -27,8 +10,7 @@ export const useFilesStore = defineStore('files', {
     size: DEFAULT_PAGE_SIZE,
     totalElements: 0,
     totalPages: 0,
-    loading: false,
-    uploading: false
+    loading: false
   }),
 
   actions: {
@@ -52,24 +34,6 @@ export const useFilesStore = defineStore('files', {
         return this.files
       } finally {
         this.loading = false
-      }
-    },
-
-    /** Upload files one by one, then reload the current page. Returns the uploaded files. */
-    async uploadFiles(files: File[]) {
-      this.uploading = true
-      const uploaded: FileRs[] = []
-      try {
-        const api = useApi()
-        for (const file of files) {
-          const { name, extension } = splitFileName(file.name)
-          const payload: UploadFileRq = { name, extension, content: await readAsDataUrl(file) }
-          uploaded.push(await api.post<FileRs>('/files', payload))
-        }
-        return uploaded
-      } finally {
-        this.uploading = false
-        if (uploaded.length) await this.fetchFiles()
       }
     },
 

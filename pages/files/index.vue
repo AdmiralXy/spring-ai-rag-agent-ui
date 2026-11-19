@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
-import useNotification from '~/composables/useNotification'
-import { NotificationType } from '~/types/notification'
-import SpaceFileDropzone from '~/components/spaces/SpaceFileDropzone.vue'
+import { useFileUploader } from '~/composables/useFileUploader'
+import { formatSize, type UploadItem } from '~/utils/fileUpload'
+import FilesDropzone from '~/components/files/FilesDropzone.vue'
 
 const { confirm } = useConfirmDialog()
-const { notify } = useNotification()
 const filesStore = useFilesStore()
-const { files, loading, uploading, page, size, totalElements, totalPages } = storeToRefs(filesStore)
+const { files, loading, page, size, totalElements, totalPages } = storeToRefs(filesStore)
+const uploader = useFileUploader()
+const { uploading, progress, loadedBytes, totalBytes, currentLabel, hasPending } = uploader
 
 const uploadOpen = ref(false)
-const selectedFiles = ref<File[]>([])
+const selectedItems = ref<UploadItem[]>([])
 const downloadingId = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
 
@@ -39,37 +40,41 @@ function formatDate(iso: string) {
   return Number.isNaN(date.getTime()) ? iso : dateFormatter.format(date)
 }
 
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ['KB', 'MB', 'GB']
-  let value = bytes / 1024
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit++
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`
+function toggleUpload() {
+  if (uploading.value) return
+  if (hasPending.value) void uploader.discard()
+  uploadOpen.value = !uploadOpen.value
+  selectedItems.value = []
 }
 
-function toggleUpload() {
-  uploadOpen.value = !uploadOpen.value
-  selectedFiles.value = []
+async function afterUpload(succeeded: number) {
+  // new files are sorted first, so show the first page
+  if (succeeded) await filesStore.fetchFiles(0)
+  if (!hasPending.value) {
+    selectedItems.value = []
+    if (succeeded) uploadOpen.value = false
+  }
 }
 
 async function upload() {
-  if (!selectedFiles.value.length) return
-  const total = selectedFiles.value.length
-  try {
-    await filesStore.uploadFiles(selectedFiles.value)
-    notify({
-      type: NotificationType.INFO,
-      message: total === 1 ? 'File uploaded' : `${total} files uploaded`
-    })
-    toggleUpload()
-  } catch {
-    // error notification is shown by useApi; keep the selection so the user can retry
-  }
+  if (!selectedItems.value.length) return
+  await afterUpload(await uploader.start(selectedItems.value))
 }
+
+async function retryUpload() {
+  await afterUpload(await uploader.retry())
+}
+
+async function discardUpload() {
+  await uploader.discard()
+  selectedItems.value = []
+}
+
+// do not leave half-uploaded sessions behind when navigating away
+onBeforeUnmount(() => {
+  uploader.cancel()
+  void uploader.discard()
+})
 
 async function download(file: FileRs) {
   downloadingId.value = file.id
@@ -100,7 +105,13 @@ async function remove(file: FileRs) {
 <template>
   <LayoutWrapper title="Files">
     <template #header-actions>
-      <UButton color="primary" variant="solid" size="sm" @click="toggleUpload">
+      <UButton
+        color="primary"
+        variant="solid"
+        size="sm"
+        :disabled="uploading"
+        @click="toggleUpload"
+      >
         <Icon
           :name="uploadOpen ? 'material-symbols:close' : 'material-symbols:upload'"
           class="mr-1"
@@ -110,27 +121,52 @@ async function remove(file: FileRs) {
     </template>
 
     <div v-if="uploadOpen" class="files__upload">
-      <SpaceFileDropzone v-model="selectedFiles" :disabled="uploading" />
+      <FilesDropzone v-model="selectedItems" :disabled="uploading || hasPending" />
+
+      <div v-if="uploading || hasPending" class="files__progress">
+        <div class="files__progress-head">
+          <span class="files__progress-label">
+            {{ uploading ? `Uploading ${currentLabel}` : 'Upload interrupted' }}
+          </span>
+          <span class="files__progress-value">
+            {{ formatSize(loadedBytes) }} / {{ formatSize(totalBytes) }} · {{ progress }}%
+          </span>
+        </div>
+        <div class="files__progress-track">
+          <div
+            class="files__progress-bar"
+            :class="{ 'files__progress-bar--failed': !uploading }"
+            :style="{ width: `${progress}%` }"
+          />
+        </div>
+      </div>
+
       <div class="files__upload-actions">
-        <UButton
-          color="primary"
-          variant="solid"
-          size="sm"
-          :loading="uploading"
-          :disabled="!selectedFiles.length"
-          @click="upload"
-        >
-          Upload {{ selectedFiles.length > 1 ? `${selectedFiles.length} files` : '' }}
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="outline"
-          size="sm"
-          :disabled="uploading"
-          @click="toggleUpload"
-        >
-          Cancel
-        </UButton>
+        <template v-if="uploading">
+          <UButton color="neutral" variant="outline" size="sm" @click="uploader.cancel()">
+            Stop
+          </UButton>
+        </template>
+        <template v-else-if="hasPending">
+          <UButton color="primary" variant="solid" size="sm" @click="retryUpload"> Resume </UButton>
+          <UButton color="neutral" variant="outline" size="sm" @click="discardUpload">
+            Discard
+          </UButton>
+        </template>
+        <template v-else>
+          <UButton
+            color="primary"
+            variant="solid"
+            size="sm"
+            :disabled="!selectedItems.length"
+            @click="upload"
+          >
+            Upload
+          </UButton>
+          <UButton color="neutral" variant="outline" size="sm" @click="toggleUpload">
+            Cancel
+          </UButton>
+        </template>
       </div>
     </div>
 
@@ -200,6 +236,34 @@ async function remove(file: FileRs) {
 
 .files__upload {
   @apply mb-3 flex flex-col gap-3 rounded-lg border border-[#333] bg-[#1e1e1e] p-3;
+}
+
+.files__progress {
+  @apply flex flex-col gap-1.5;
+}
+
+.files__progress-head {
+  @apply flex items-center justify-between gap-3 text-xs;
+}
+
+.files__progress-label {
+  @apply truncate text-gray-200;
+}
+
+.files__progress-value {
+  @apply shrink-0 text-gray-400 tabular-nums;
+}
+
+.files__progress-track {
+  @apply h-1.5 overflow-hidden rounded-full bg-[#2a2a2a];
+}
+
+.files__progress-bar {
+  @apply h-full rounded-full bg-blue-500 transition-[width] duration-200;
+}
+
+.files__progress-bar--failed {
+  @apply bg-amber-500;
 }
 
 .files__upload-actions {

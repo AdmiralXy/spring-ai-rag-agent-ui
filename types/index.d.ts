@@ -70,6 +70,46 @@ declare global {
     content: string
   }
 
+  export interface CreateUploadFileRq {
+    path: string
+    size: number
+  }
+
+  export interface CreateUploadRq {
+    name: string
+    files: CreateUploadFileRq[]
+  }
+
+  export interface UploadChunkRq {
+    content: string
+  }
+
+  export interface UploadSessionFileRs {
+    index: number
+    path: string
+    size: number
+    chunkCount: number
+  }
+
+  export interface CreateUploadRs {
+    uploadId: string
+    chunkSize: number
+    expiresAt: string
+    files: UploadSessionFileRs[]
+  }
+
+  export interface UploadSessionFileStatusRs extends UploadSessionFileRs {
+    receivedChunks: number[]
+  }
+
+  export interface UploadStatusRs {
+    uploadId: string
+    name: string
+    chunkSize: number
+    expiresAt: string
+    files: UploadSessionFileStatusRs[]
+  }
+
   export interface ChatHistoryRs {
     chatId: string
     messages: ChatMessage[]
