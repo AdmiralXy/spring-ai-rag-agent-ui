@@ -21,6 +21,7 @@ export function useApi() {
       })
     } catch (err: any) {
       const message =
+        err?.response?._data?.detail ||
         err?.response?._data?.message ||
         err?.statusMessage ||
         err?.message ||

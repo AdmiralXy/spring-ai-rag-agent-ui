@@ -47,6 +47,29 @@ declare global {
     content: string
   }
 
+  export interface FileRs {
+    id: string
+    name: string
+    extension: string
+    fileName: string
+    contentType: string
+    size: number
+    createdAt: string
+  }
+
+  export interface GetFilesRs {
+    files: {
+      content: FileRs[]
+      page: PageMetadata
+    }
+  }
+
+  export interface UploadFileRq {
+    name: string
+    extension: string
+    content: string
+  }
+
   export interface ChatHistoryRs {
     chatId: string
     messages: ChatMessage[]
