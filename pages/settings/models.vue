@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import ChatModelsSection from '~/components/settings/models/ChatModelsSection.vue'
 import EmbeddingsModelSection from '~/components/settings/models/EmbeddingsModelSection.vue'
 import SummarizerModelSection from '~/components/settings/models/SummarizerModelSection.vue'
+import { toBase64 } from '~/utils/uploadCrypto'
 
 type SettingsView = 'chat' | 'embeddings' | 'summarizer'
 
@@ -10,6 +11,12 @@ const api = useApi()
 const settingsStore = useModelSettingsStore()
 const AUTH_KEY = 'settings-page-authenticated'
 const AUTH_PASSWORD_KEY = 'settings-page-password'
+const AUTH_USERNAME = 'admin'
+
+/** Basic auth token for `admin:<password>`; UTF-8, so non-Latin passwords work too. */
+function basicToken(pass: string) {
+  return toBase64(new TextEncoder().encode(`${AUTH_USERNAME}:${pass}`))
+}
 
 const views: Array<{ key: SettingsView; label: string; hint: string }> = [
   { key: 'chat', label: 'Chat models', hint: 'Multiple models configuration' },
@@ -55,16 +62,18 @@ async function unlockSettings() {
     return
   }
 
+  const token = basicToken(password.value)
   authLoading.value = true
   try {
     await api.get('/settings/models/verify', {
       headers: {
-        Authorization: `Basic ${password.value}`
+        Authorization: `Basic ${token}`
       }
     })
 
     sessionStorage.setItem(AUTH_KEY, '1')
-    sessionStorage.setItem(AUTH_PASSWORD_KEY, password.value)
+    // the store sends this value as `Basic <token>`
+    sessionStorage.setItem(AUTH_PASSWORD_KEY, token)
     isAuthorized.value = true
     password.value = ''
     await loadSettingsData()

@@ -70,23 +70,57 @@ declare global {
     content: string
   }
 
-  export interface CreateUploadFileRq {
-    path: string
-    size: number
+  export interface UploadEncryptionConfig {
+    version: number
+    kdf: string
+    kdfIterations: number
+    kdfSalt: string
+    hkdf: string
+    hkdfInfo: string
+    cipher: string
+    keySaltLength: number
+    ivLength: number
+    tagLength: number
+  }
+
+  export interface UploadConfigRs {
+    chunkSize: number
+    maxTotalSize: number
+    maxFiles: number
+    maxRequestSize: number
+    maxBatchChunks: number
+    encryption: UploadEncryptionConfig
+  }
+
+  /** Plaintext of the create-session request; encrypted, never sent as is. */
+  export interface UploadManifest {
+    name: string
+    files: { path: string; size: number }[]
   }
 
   export interface CreateUploadRq {
-    name: string
-    files: CreateUploadFileRq[]
+    version: number
+    keySalt: string
+    iv: string
+    data: string
   }
 
   export interface UploadChunkRq {
-    content: string
+    iv: string
+    data: string
+  }
+
+  export interface UploadChunkItemRq extends UploadChunkRq {
+    fileIndex: number
+    chunkIndex: number
+  }
+
+  export interface UploadChunksRq {
+    chunks: UploadChunkItemRq[]
   }
 
   export interface UploadSessionFileRs {
     index: number
-    path: string
     size: number
     chunkCount: number
   }
@@ -104,7 +138,7 @@ declare global {
 
   export interface UploadStatusRs {
     uploadId: string
-    name: string
+    keySalt: string
     chunkSize: number
     expiresAt: string
     files: UploadSessionFileStatusRs[]

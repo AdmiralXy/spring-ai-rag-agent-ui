@@ -5,12 +5,34 @@ import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import { useFileUploader } from '~/composables/useFileUploader'
 import { formatSize, type UploadItem } from '~/utils/fileUpload'
 import FilesDropzone from '~/components/files/FilesDropzone.vue'
+import UploadKeyDialog from '~/components/files/UploadKeyDialog.vue'
 
 const { confirm } = useConfirmDialog()
 const filesStore = useFilesStore()
 const { files, loading, page, size, totalElements, totalPages } = storeToRefs(filesStore)
-const uploader = useFileUploader()
-const { uploading, progress, loadedBytes, totalBytes, currentLabel, hasPending } = uploader
+
+// key dialog: the uploader awaits askUploadKey(); the password is passed through, never stored
+const keyDialogOpen = ref(false)
+const keyDialogError = ref<string | undefined>()
+let resolveKey: ((password: string | null) => void) | null = null
+
+function askUploadKey({ error }: { error?: string }) {
+  keyDialogError.value = error
+  keyDialogOpen.value = true
+  return new Promise<string | null>((resolve) => {
+    resolveKey = resolve
+  })
+}
+
+function settleKey(password: string | null) {
+  keyDialogOpen.value = false
+  resolveKey?.(password)
+  resolveKey = null
+}
+
+const uploader = useFileUploader(askUploadKey)
+const { uploading, preparingKey, progress, loadedBytes, totalBytes, currentLabel, hasPending } =
+  uploader
 
 const uploadOpen = ref(false)
 const selectedItems = ref<UploadItem[]>([])
@@ -42,7 +64,7 @@ function formatDate(iso: string) {
 
 function toggleUpload() {
   if (uploading.value) return
-  if (hasPending.value) void uploader.discard()
+  if (hasPending.value) uploader.discard()
   uploadOpen.value = !uploadOpen.value
   selectedItems.value = []
 }
@@ -65,15 +87,16 @@ async function retryUpload() {
   await afterUpload(await uploader.retry())
 }
 
-async function discardUpload() {
-  await uploader.discard()
+function discardUpload() {
+  uploader.discard()
   selectedItems.value = []
 }
 
-// do not leave half-uploaded sessions behind when navigating away
+// stop a running upload when navigating away; a running upload still holds the key, so its session is cancelled
 onBeforeUnmount(() => {
+  settleKey(null)
   uploader.cancel()
-  void uploader.discard()
+  uploader.discard()
 })
 
 async function download(file: FileRs) {
@@ -126,7 +149,14 @@ async function remove(file: FileRs) {
       <div v-if="uploading || hasPending" class="files__progress">
         <div class="files__progress-head">
           <span class="files__progress-label">
-            {{ uploading ? `Uploading ${currentLabel}` : 'Upload interrupted' }}
+            <Icon
+              v-if="preparingKey"
+              name="material-symbols:progress-activity"
+              class="mr-1 animate-spin align-[-2px]"
+            />
+            {{
+              uploading ? currentLabel : 'Upload interrupted. Resume asks for the upload key again'
+            }}
           </span>
           <span class="files__progress-value">
             {{ formatSize(loadedBytes) }} / {{ formatSize(totalBytes) }} · {{ progress }}%
@@ -228,6 +258,13 @@ async function remove(file: FileRs) {
         />
       </div>
     </template>
+
+    <UploadKeyDialog
+      :open="keyDialogOpen"
+      :error="keyDialogError"
+      @submit="settleKey"
+      @cancel="settleKey(null)"
+    />
   </LayoutWrapper>
 </template>
 
