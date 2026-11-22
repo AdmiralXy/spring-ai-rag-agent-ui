@@ -125,7 +125,7 @@ const statsTitle = computed(() => {
   return `Input ${u.inputTokens} · cache read ${u.cacheReadTokens} · cache write ${u.cacheCreationTokens} · output ${u.outputTokens}`
 })
 
-async function copyAnswer() {
+async function copyContent() {
   try {
     await navigator.clipboard.writeText(props.content)
     copied.value = true
@@ -163,6 +163,16 @@ async function copyAnswer() {
         </button>
       </div>
       <div class="msg__user-actions">
+        <button
+          v-if="content"
+          type="button"
+          class="ui-icon-btn msg__action"
+          :aria-label="copied ? 'Copied' : 'Copy message'"
+          :title="copied ? 'Copied' : 'Copy message'"
+          @click="copyContent"
+        >
+          <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" />
+        </button>
         <button
           type="button"
           class="ui-icon-btn ui-icon-btn--danger msg__action"
@@ -255,7 +265,7 @@ async function copyAnswer() {
         class="ui-icon-btn msg__action"
         :aria-label="copied ? 'Copied' : 'Copy answer'"
         :title="copied ? 'Copied' : 'Copy answer'"
-        @click="copyAnswer"
+        @click="copyContent"
       >
         <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" />
       </button>
@@ -286,7 +296,7 @@ async function copyAnswer() {
 }
 
 .msg__user-actions {
-  @apply -mr-1 flex opacity-0 transition-opacity;
+  @apply -mr-1 flex gap-1 opacity-0 transition-opacity;
 }
 
 .msg--user:hover .msg__user-actions,
