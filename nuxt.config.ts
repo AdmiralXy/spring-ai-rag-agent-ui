@@ -10,13 +10,27 @@ export default defineNuxtConfig({
       '@nuxtjs/google-fonts',
       {
         families: {
-          'Noto Sans': [100, 200, 300, 400, 500, 600, 700, 800, 900],
-          'Fira Code': [100, 200, 300, 400, 500, 600, 700, 800, 900]
-        }
+          Inter: [400, 500, 600, 700],
+          'JetBrains Mono': [400, 500]
+        },
+        display: 'swap'
       }
     ]
   ],
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/space-providers.css'],
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark'
+  },
+  app: {
+    head: {
+      htmlAttrs: { lang: 'en' },
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        { name: 'color-scheme', content: 'dark' }
+      ]
+    }
+  },
   icon: {
     provider: 'server',
     serverBundle: 'local',

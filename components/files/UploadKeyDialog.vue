@@ -51,10 +51,7 @@ function onOpenChange(open: boolean) {
     title="Upload key"
     description="Folders are encrypted before upload. Enter the upload key you were given."
     :dismissible="true"
-    :ui="{
-      overlay: 'bg-[#272727ED]',
-      content: 'bg-[#171717] border-none !divide-none !ring-0 !shadow-none'
-    }"
+    :ui="{ content: 'max-w-sm' }"
     @update:open="onOpenChange"
   >
     <template #body>
@@ -64,7 +61,7 @@ function onOpenChange(open: boolean) {
             ref="inputRef"
             v-model="password"
             :type="reveal ? 'text' : 'password'"
-            class="upload-key__input"
+            class="ui-input upload-key__input"
             placeholder="Upload key"
             autocomplete="off"
             spellcheck="false"
@@ -76,13 +73,7 @@ function onOpenChange(open: boolean) {
             :title="reveal ? 'Hide' : 'Show'"
             @click="reveal = !reveal"
           >
-            <Icon
-              :name="
-                reveal
-                  ? 'material-symbols:visibility-off-outline'
-                  : 'material-symbols:visibility-outline'
-              "
-            />
+            <Icon :name="reveal ? 'lucide:eye-off' : 'lucide:eye'" />
           </button>
         </div>
         <p v-if="props.error" class="upload-key__error">{{ props.error }}</p>
@@ -91,8 +82,10 @@ function onOpenChange(open: boolean) {
 
     <template #footer>
       <div class="flex w-full justify-end gap-2">
-        <UButton variant="solid" :disabled="!password" @click="submit">Continue</UButton>
-        <UButton color="neutral" variant="solid" @click="cancel">Cancel</UButton>
+        <button type="button" class="ui-btn ui-btn--ghost" @click="cancel">Cancel</button>
+        <button type="button" class="ui-btn ui-btn--primary" :disabled="!password" @click="submit">
+          Continue
+        </button>
       </div>
     </template>
   </UModal>
@@ -110,18 +103,21 @@ function onOpenChange(open: boolean) {
 }
 
 .upload-key__input {
-  @apply w-full rounded-md border border-[#3d3d3d] bg-[#111] py-2 pr-10 pl-3 text-white outline-none;
-}
-
-.upload-key__input:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
+  @apply pr-10;
 }
 
 .upload-key__reveal {
-  @apply absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer p-1 text-lg text-gray-400 hover:text-white;
+  @apply absolute top-1/2 right-1.5 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-[8px] border-0 bg-transparent text-base;
+  color: var(--c-text-3);
+}
+
+.upload-key__reveal:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
 }
 
 .upload-key__error {
-  @apply text-sm text-red-400;
+  @apply m-0 text-sm;
+  color: var(--c-danger);
 }
 </style>

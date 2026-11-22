@@ -34,7 +34,7 @@ const hasFolders = computed(() => props.folders.length > 0)
   <div class="space-provider-panel">
     <label class="space-compact-field">
       <span class="space-compact-icon space-compact-icon--git">
-        <Icon name="mdi:git" />
+        <Icon name="simple-icons:git" />
       </span>
       <input
         :value="props.url"
@@ -85,17 +85,18 @@ const hasFolders = computed(() => props.folders.length > 0)
     </div>
 
     <div class="space-git-toolbar">
-      <UButton
-        color="neutral"
-        variant="soft"
-        size="sm"
-        icon="mdi:source-branch"
-        :loading="props.infoLoading"
-        :disabled="!props.canLoadInfo"
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary"
+        :disabled="!props.canLoadInfo || props.infoLoading"
         @click="emit('load-info')"
       >
-        {{ props.infoLoading ? 'Loading repository...' : 'Load branches and folders' }}
-      </UButton>
+        <Icon
+          :name="props.infoLoading ? 'lucide:loader-circle' : 'lucide:git-branch'"
+          :class="{ 'animate-spin': props.infoLoading }"
+        />
+        {{ props.infoLoading ? 'Loading repository…' : 'Load branches and folders' }}
+      </button>
 
       <p v-if="props.infoSummary" class="space-section-note">{{ props.infoSummary }}</p>
       <p v-else-if="props.infoError" class="space-status space-status--error">
@@ -151,7 +152,7 @@ const hasFolders = computed(() => props.folders.length > 0)
           aria-label="Clear selected folder"
           @click="emit('clear-folder')"
         >
-          <Icon name="material-symbols:close-small" />
+          <Icon name="lucide:x" />
           <span>Clear</span>
         </button>
       </div>
@@ -162,182 +163,3 @@ const hasFolders = computed(() => props.folders.length > 0)
     </p>
   </div>
 </template>
-
-<style scoped>
-@import 'tailwindcss/theme';
-
-.space-provider-panel {
-  @apply flex flex-col gap-[0.9rem];
-}
-
-.space-compact-field {
-  @apply flex w-full items-center gap-[0.85rem] rounded-[1rem] border border-[#333] px-3 py-2;
-  background: linear-gradient(180deg, #141414 0%, #101010 100%);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.space-compact-field:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
-}
-
-.space-compact-icon {
-  @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full;
-  background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
-}
-
-.space-compact-icon--git {
-  background: rgba(249, 115, 22, 0.14);
-  color: #fdba74;
-}
-
-.space-compact-input {
-  @apply w-full border-none bg-transparent text-[0.95rem] text-white outline-none;
-}
-
-.space-compact-input::placeholder {
-  color: #6b7280;
-}
-
-.space-auth-card {
-  @apply flex flex-col gap-[0.9rem] rounded-[1rem] border p-4;
-  border-color: rgba(59, 130, 246, 0.14);
-  background: linear-gradient(180deg, rgba(20, 20, 20, 0.96) 0%, rgba(14, 14, 14, 0.98) 100%);
-}
-
-.space-auth-card--optional {
-  border-color: rgba(249, 115, 22, 0.14);
-}
-
-.space-section-copy {
-  @apply flex flex-col gap-[0.2rem];
-}
-
-.space-section-title {
-  @apply text-[0.95rem] font-semibold text-gray-100;
-}
-
-.space-section-note,
-.space-status {
-  @apply text-[0.82rem] leading-[1.45];
-}
-
-.space-section-note {
-  @apply text-gray-400;
-}
-
-.space-status--error {
-  @apply text-red-300;
-}
-
-.space-field-grid,
-.space-git-grid {
-  @apply grid gap-[0.85rem];
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.space-field {
-  @apply flex flex-col gap-[0.45rem];
-}
-
-.space-field-label {
-  @apply text-[0.82rem] font-medium text-gray-300;
-}
-
-.space-field-input {
-  @apply w-full rounded-[0.9rem] border border-[#333] bg-[#101010] px-[0.95rem] py-[0.8rem] text-[0.92rem] text-white outline-none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.space-field-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
-}
-
-.space-field-input::placeholder {
-  color: #6b7280;
-}
-
-.space-select {
-  appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, #9ca3af 50%),
-    linear-gradient(135deg, #9ca3af 50%, transparent 50%);
-  background-position:
-    calc(100% - 18px) calc(50% - 1px),
-    calc(100% - 12px) calc(50% - 1px);
-  background-repeat: no-repeat;
-  background-size: 6px 6px;
-  padding-right: 2.5rem;
-}
-
-.space-select:disabled {
-  @apply cursor-not-allowed opacity-70;
-}
-
-.space-git-toolbar {
-  @apply flex flex-wrap items-center justify-between gap-3;
-}
-
-.space-folder-field {
-  @apply flex items-end gap-[0.55rem];
-}
-
-.space-folder-field .space-field {
-  @apply flex-1;
-}
-
-.space-folder-clear {
-  @apply inline-flex h-[2.7rem] shrink-0 items-center gap-1 rounded-[0.75rem] border border-[#2f2f2f] px-3 text-[0.78rem] font-medium text-gray-300;
-  background: #151515;
-  transition:
-    border-color 0.2s ease,
-    color 0.2s ease,
-    background-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.space-folder-clear:hover:not(:disabled) {
-  border-color: #3a3a3a;
-  color: #e5e7eb;
-  background: #1a1a1a;
-}
-
-.space-folder-clear:focus-visible {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
-}
-
-.space-folder-clear:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.space-folder-clear:disabled {
-  @apply cursor-not-allowed opacity-60;
-}
-
-@media (max-width: 768px) {
-  .space-field-grid,
-  .space-git-grid {
-    @apply grid-cols-1;
-  }
-
-  .space-folder-field {
-    @apply flex-col items-stretch;
-  }
-
-  .space-folder-clear {
-    @apply w-full justify-center;
-  }
-
-  .space-git-toolbar {
-    @apply items-stretch;
-  }
-}
-</style>

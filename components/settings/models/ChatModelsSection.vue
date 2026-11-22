@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 
-defineProps<{
+const props = defineProps<{
   models: ChatModelSettings[]
   loading: boolean
 }>()
@@ -15,388 +15,547 @@ const emit = defineEmits<{
 
 const { confirm } = useConfirmDialog()
 
-const creating = ref(false)
-const editingId = ref<string | null>(null)
+const AGENT: ChatModelProvider = 'AGENT'
+const NEW = 'new'
 
-const newChatModel = ref<UpsertChatModelRq>({
-  provider: 'OPENAI',
-  label: '',
-  name: '',
-  baseUrl: 'https://api.openai.com',
-  apiKey: '',
-  streaming: true,
-  systemPrompt: 'You are helpful',
-  priority: 10,
-  temperature: 1,
-  maxContextTokens: 128000
-})
+const providers: Array<{ value: ChatModelProvider; label: string }> = [
+  { value: 'OPENAI', label: 'OpenAI' },
+  { value: 'ANTHROPIC', label: 'Anthropic' },
+  { value: 'AGENT', label: 'Agent' }
+]
 
-const editChatModel = ref<UpsertChatModelRq>({
-  provider: 'OPENAI',
-  label: '',
-  name: '',
-  baseUrl: '',
-  apiKey: '',
-  streaming: true,
-  systemPrompt: '',
-  priority: 10,
-  temperature: 1,
-  maxContextTokens: 128000
-})
+const DEFAULT_URLS: Partial<Record<ChatModelProvider, string>> = {
+  OPENAI: 'https://api.openai.com',
+  ANTHROPIC: 'https://api.anthropic.com'
+}
 
-const chatProviderOptions: ChatModelProvider[] = ['OPENAI', 'ANTHROPIC']
-
-function normalizeChatPayload(payload: UpsertChatModelRq): UpsertChatModelRq {
+function blank(): UpsertChatModelRq {
   return {
-    provider: payload.provider,
-    label: payload.label.trim(),
-    name: payload.name.trim(),
-    baseUrl: payload.baseUrl.trim(),
-    apiKey: payload.apiKey.trim(),
-    streaming: payload.streaming,
-    systemPrompt: payload.systemPrompt.trim(),
-    priority: Number(payload.priority),
-    temperature: Number(payload.temperature),
-    maxContextTokens: Number(payload.maxContextTokens)
-  }
-}
-
-function isChatModelValid(payload: UpsertChatModelRq) {
-  return Boolean(payload.label && payload.name && payload.baseUrl && payload.apiKey)
-}
-
-function resetCreateForm() {
-  creating.value = false
-  newChatModel.value = {
     provider: 'OPENAI',
     label: '',
     name: '',
-    baseUrl: 'https://api.openai.com',
+    baseUrl: DEFAULT_URLS.OPENAI!,
     apiKey: '',
     streaming: true,
-    systemPrompt: 'You are helpful',
+    systemPrompt: '',
     priority: 10,
     temperature: 1,
-    maxContextTokens: 128000
+    maxContextTokens: 128000,
+    thinking: false,
+    maxOutputTokens: 0,
+    vision: false
   }
 }
 
-function startEdit(model: ChatModelSettings) {
-  editingId.value = model.id
-  editChatModel.value = {
+function fromModel(model: ChatModelSettings): UpsertChatModelRq {
+  return {
     provider: model.provider,
     label: model.label,
     name: model.name,
     baseUrl: model.baseUrl,
     apiKey: model.apiKey,
     streaming: model.streaming,
-    systemPrompt: model.systemPrompt,
+    systemPrompt: model.systemPrompt ?? '',
     priority: model.priority,
     temperature: model.temperature,
-    maxContextTokens: model.maxContextTokens
+    maxContextTokens: model.maxContextTokens,
+    thinking: Boolean(model.thinking),
+    maxOutputTokens: model.maxOutputTokens ?? 0,
+    vision: Boolean(model.vision)
   }
 }
 
-function cancelEdit() {
-  editingId.value = null
+const selectedId = ref<string | null>(null)
+const form = ref<UpsertChatModelRq>(blank())
+const original = ref('')
+
+const selectedModel = computed(() => props.models.find((m) => m.id === selectedId.value))
+const isNew = computed(() => selectedId.value === NEW)
+const isAgent = computed(() => form.value.provider === AGENT)
+// the Anthropic API no longer accepts sampling options, so temperature only applies to OpenAI
+const supportsTemperature = computed(() => form.value.provider === 'OPENAI')
+const dirty = computed(() => JSON.stringify(form.value) !== original.value)
+const valid = computed(() =>
+  Boolean(
+    form.value.label.trim() &&
+      form.value.name.trim() &&
+      form.value.apiKey.trim() &&
+      (isAgent.value || form.value.baseUrl.trim())
+  )
+)
+
+function select(id: string | null) {
+  selectedId.value = id
+  const model = props.models.find((m) => m.id === id)
+  form.value = model ? fromModel(model) : blank()
+  original.value = JSON.stringify(form.value)
 }
 
-function createChatModel() {
-  const payload = normalizeChatPayload(newChatModel.value)
-  if (!isChatModelValid(payload)) return
-  emit('create', payload)
-  resetCreateForm()
+watch(
+  () => props.models,
+  (models) => {
+    if (isNew.value) return
+    if (!selectedId.value || !models.some((m) => m.id === selectedId.value)) {
+      select(models[0]?.id ?? null)
+    } else if (!dirty.value) {
+      select(selectedId.value)
+    }
+  },
+  { immediate: true, deep: true }
+)
+
+function setProvider(provider: ChatModelProvider) {
+  const previous = form.value.provider
+  if (previous === provider) return
+  form.value.provider = provider
+  if (provider === AGENT) {
+    form.value.thinking = true
+    form.value.vision = true
+    form.value.baseUrl = ''
+    if (!form.value.name) form.value.name = 'opus'
+  } else if (!form.value.baseUrl || form.value.baseUrl === DEFAULT_URLS[previous]) {
+    form.value.baseUrl = DEFAULT_URLS[provider] ?? ''
+  }
 }
 
-function saveChatModel(id: string) {
-  const payload = normalizeChatPayload(editChatModel.value)
-  if (!isChatModelValid(payload)) return
-  emit('update', id, payload)
-  cancelEdit()
+function startCreate() {
+  select(null)
+  selectedId.value = NEW
+  original.value = JSON.stringify(form.value)
 }
 
-async function removeChatModel(id: string) {
-  const ok = await confirm('Remove model', 'This action cannot be undone. Continue?')
+function normalized(): UpsertChatModelRq {
+  const f = form.value
+  return {
+    provider: f.provider,
+    label: f.label.trim(),
+    name: f.name.trim(),
+    baseUrl: isAgent.value ? '' : f.baseUrl.trim(),
+    apiKey: f.apiKey.trim(),
+    streaming: isAgent.value ? true : f.streaming,
+    systemPrompt: f.systemPrompt.trim(),
+    priority: Number(f.priority),
+    temperature: Number(f.temperature),
+    maxContextTokens: Number(f.maxContextTokens),
+    thinking: f.thinking,
+    maxOutputTokens: Math.max(0, Math.floor(Number(f.maxOutputTokens) || 0)),
+    vision: f.vision
+  }
+}
+
+function save() {
+  if (!valid.value) return
+  const payload = normalized()
+  if (isNew.value) {
+    emit('create', payload)
+    selectedId.value = null
+  } else if (selectedId.value) {
+    emit('update', selectedId.value, payload)
+  }
+  original.value = JSON.stringify(form.value)
+}
+
+function revert() {
+  if (isNew.value) select(props.models[0]?.id ?? null)
+  else select(selectedId.value)
+}
+
+async function remove() {
+  const model = selectedModel.value
+  if (!model) return
+  const ok = await confirm(`Delete “${model.label}”?`, 'This cannot be undone.')
   if (!ok) return
-  emit('remove', id)
-  if (editingId.value === id) {
-    cancelEdit()
-  }
+  emit('remove', model.id)
+  selectedId.value = null
+}
+
+function providerLabel(provider: ChatModelProvider) {
+  return providers.find((p) => p.value === provider)?.label ?? provider
+}
+
+function initials(model: ChatModelSettings) {
+  if (model.provider === AGENT) return 'AG'
+  return model.provider === 'ANTHROPIC' ? 'A' : 'O'
 }
 </script>
 
 <template>
-  <section class="settings__section">
-    <div class="settings__section-head">
-      <h2>Chat models</h2>
-      <UButton color="primary" variant="solid" size="sm" @click="creating = !creating">
-        <Icon name="material-symbols:add" class="mr-1" />
-        {{ creating ? 'Cancel' : 'Create model' }}
-      </UButton>
-    </div>
-
-    <div v-if="creating" class="settings__card">
-      <h3 class="settings__card-title">New chat model</h3>
-      <div class="settings__grid settings__grid--chat">
-        <label class="settings__field">
-          <span>Provider</span>
-          <select v-model="newChatModel.provider" class="settings__input">
-            <option v-for="option in chatProviderOptions" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
-        </label>
-        <label class="settings__field">
-          <span>Label</span>
-          <input v-model="newChatModel.label" type="text" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>Name</span>
-          <input v-model="newChatModel.name" type="text" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>Base URL</span>
-          <input v-model="newChatModel.baseUrl" type="text" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>API key</span>
-          <input v-model="newChatModel.apiKey" type="password" class="settings__input" />
-        </label>
-        <label class="settings__field settings__field--inline">
-          <input v-model="newChatModel.streaming" type="checkbox" />
-          <span>Streaming</span>
-        </label>
-        <label class="settings__field">
-          <span>Priority</span>
-          <input v-model.number="newChatModel.priority" type="number" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>Temperature</span>
-          <input
-            v-model.number="newChatModel.temperature"
-            type="number"
-            min="0"
-            max="2"
-            step="0.1"
-            class="settings__input"
-          />
-        </label>
-        <label class="settings__field">
-          <span>Max context tokens</span>
-          <input
-            v-model.number="newChatModel.maxContextTokens"
-            type="number"
-            class="settings__input"
-          />
-        </label>
-        <label class="settings__field settings__field--full">
-          <span>System prompt</span>
-          <textarea v-model="newChatModel.systemPrompt" rows="3" class="settings__textarea" />
-        </label>
+  <div class="models">
+    <section class="models__list" aria-label="Chat models">
+      <div class="models__list-head">
+        <h2 class="ui-section-label">Chat models</h2>
+        <button type="button" class="ui-btn ui-btn--tinted ui-btn--sm" @click="startCreate">
+          <Icon name="lucide:plus" />
+          Add model
+        </button>
       </div>
-      <div class="settings__actions">
-        <UButton
-          color="primary"
-          variant="solid"
-          size="sm"
-          :loading="loading"
-          @click="createChatModel"
+
+      <div v-if="models.length || isNew" class="ui-group">
+        <button
+          v-if="isNew"
+          type="button"
+          class="ui-group-row models__row models__row--active"
+          aria-current="true"
         >
-          Save
-        </UButton>
-        <UButton color="neutral" variant="outline" size="sm" @click="resetCreateForm"
-          >Cancel</UButton
+          <span class="models__badge models__badge--new"><Icon name="lucide:plus" /></span>
+          <span class="models__row-text">
+            <span class="models__row-title">{{ form.label || 'New model' }}</span>
+            <span class="models__row-meta">Not saved yet</span>
+          </span>
+        </button>
+        <button
+          v-for="model in models"
+          :key="model.id"
+          type="button"
+          class="ui-group-row models__row"
+          :class="{ 'models__row--active': model.id === selectedId }"
+          :aria-current="model.id === selectedId"
+          @click="select(model.id)"
         >
+          <span class="models__badge" :class="{ 'models__badge--agent': model.provider === AGENT }">
+            {{ initials(model) }}
+          </span>
+          <span class="models__row-text">
+            <span class="models__row-title">{{ model.label }}</span>
+            <span class="models__row-meta">
+              {{ providerLabel(model.provider) }} · {{ model.name }}
+            </span>
+          </span>
+          <Icon name="lucide:chevron-right" class="models__chevron" />
+        </button>
       </div>
-    </div>
+      <div v-else-if="!loading" class="ui-empty">
+        <Icon name="lucide:sparkles" class="ui-empty__icon" />
+        <p class="ui-empty__title">No chat models yet</p>
+        <p class="text-sm">Add an OpenAI, Anthropic or agent model to start chatting.</p>
+      </div>
+      <p class="ui-hint">
+        Lower priority comes first; the first model is the default for new chats.
+      </p>
+    </section>
 
-    <div v-if="!models.length && !loading" class="settings__empty">
-      No chat models configured yet.
-    </div>
+    <section v-if="selectedId" class="models__editor" aria-label="Edit model">
+      <div class="models__editor-head">
+        <span class="models__editor-icon">
+          <Icon :name="isAgent ? 'lucide:terminal' : 'lucide:sparkles'" />
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="models__editor-title">
+            {{ form.label || (isNew ? 'New model' : 'Untitled') }}
+          </div>
+          <div class="ui-subtitle">
+            {{ isAgent ? 'Runs in the sandboxed agent runner' : 'Direct API model' }}
+          </div>
+        </div>
+      </div>
 
-    <div v-for="model in models" :key="model.id" class="settings__card">
-      <template v-if="editingId === model.id">
-        <h3 class="settings__card-title">Edit: {{ model.label }}</h3>
-        <div class="settings__grid settings__grid--chat">
-          <label class="settings__field">
-            <span>Provider</span>
-            <select v-model="editChatModel.provider" class="settings__input">
-              <option v-for="option in chatProviderOptions" :key="option" :value="option">
-                {{ option }}
-              </option>
-            </select>
-          </label>
-          <label class="settings__field">
-            <span>Label</span>
-            <input v-model="editChatModel.label" type="text" class="settings__input" />
-          </label>
-          <label class="settings__field">
-            <span>Name</span>
-            <input v-model="editChatModel.name" type="text" class="settings__input" />
-          </label>
-          <label class="settings__field">
-            <span>Base URL</span>
-            <input v-model="editChatModel.baseUrl" type="text" class="settings__input" />
-          </label>
-          <label class="settings__field">
-            <span>API key</span>
-            <input v-model="editChatModel.apiKey" type="password" class="settings__input" />
-          </label>
-          <label class="settings__field settings__field--inline">
-            <input v-model="editChatModel.streaming" type="checkbox" />
-            <span>Streaming</span>
-          </label>
-          <label class="settings__field">
-            <span>Priority</span>
-            <input v-model.number="editChatModel.priority" type="number" class="settings__input" />
-          </label>
-          <label class="settings__field">
-            <span>Temperature</span>
+      <div class="models__block">
+        <div class="ui-section-label">Provider</div>
+        <div class="ui-segmented models__providers" role="radiogroup" aria-label="Provider">
+          <button
+            v-for="p in providers"
+            :key="p.value"
+            type="button"
+            role="radio"
+            class="ui-segmented__item"
+            :aria-checked="form.provider === p.value"
+            @click="setProvider(p.value)"
+          >
+            {{ p.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="models__block">
+        <div class="ui-section-label">Model</div>
+        <div class="ui-group">
+          <label class="ui-group-row">
+            <span class="ui-group-row__label">Label</span>
             <input
-              v-model.number="editChatModel.temperature"
+              v-model="form.label"
+              type="text"
+              class="ui-group-row__control"
+              placeholder="Shown in the model picker"
+            />
+          </label>
+          <label class="ui-group-row">
+            <span class="ui-group-row__label">Model</span>
+            <input
+              v-model="form.name"
+              type="text"
+              class="ui-group-row__control ui-mono text-[13px]"
+              :placeholder="isAgent ? 'opus, sonnet, haiku or a full id' : 'e.g. gpt-5.4'"
+            />
+          </label>
+          <label v-if="!isAgent" class="ui-group-row">
+            <span class="ui-group-row__label">Base URL</span>
+            <input
+              v-model="form.baseUrl"
+              type="url"
+              class="ui-group-row__control ui-mono text-[13px]"
+              placeholder="https://"
+            />
+          </label>
+          <label class="ui-group-row">
+            <span class="ui-group-row__label">{{ isAgent ? 'OAuth token' : 'API key' }}</span>
+            <input
+              v-model="form.apiKey"
+              type="password"
+              class="ui-group-row__control"
+              autocomplete="off"
+              :placeholder="isAgent ? 'OAuth token or API key' : 'sk-…'"
+            />
+          </label>
+        </div>
+        <p v-if="isAgent" class="ui-hint">
+          The token is passed to the agent runner with every request and never stored there. See the
+          runner README for how to get one.
+        </p>
+      </div>
+
+      <div class="models__block">
+        <div class="ui-section-label">Behaviour</div>
+        <div class="ui-group">
+          <label class="ui-group-row">
+            <span class="flex-1">Priority</span>
+            <input
+              v-model.number="form.priority"
+              type="number"
+              class="ui-group-row__control models__num"
+            />
+          </label>
+          <div v-if="!isAgent" class="ui-group-row">
+            <span class="flex-1">Streaming</span>
+            <button
+              type="button"
+              role="switch"
+              class="ui-switch"
+              aria-label="Streaming"
+              :aria-checked="form.streaming"
+              @click="form.streaming = !form.streaming"
+            ></button>
+          </div>
+          <label v-if="supportsTemperature" class="ui-group-row">
+            <span class="flex-1">Temperature</span>
+            <input
+              v-model.number="form.temperature"
               type="number"
               min="0"
               max="2"
               step="0.1"
-              class="settings__input"
+              class="ui-group-row__control models__num"
             />
           </label>
-          <label class="settings__field">
-            <span>Max context tokens</span>
+          <div class="ui-group-row">
+            <span class="flex-1">Thinking</span>
+            <button
+              type="button"
+              role="switch"
+              class="ui-switch"
+              aria-label="Thinking"
+              :aria-checked="form.thinking"
+              @click="form.thinking = !form.thinking"
+            ></button>
+          </div>
+          <div class="ui-group-row">
+            <span class="flex-1">Images</span>
+            <button
+              type="button"
+              role="switch"
+              class="ui-switch"
+              aria-label="Images"
+              :aria-checked="form.vision"
+              @click="form.vision = !form.vision"
+            ></button>
+          </div>
+          <label class="ui-group-row">
+            <span class="flex-1">Max context tokens</span>
             <input
-              v-model.number="editChatModel.maxContextTokens"
+              v-model.number="form.maxContextTokens"
               type="number"
-              class="settings__input"
+              min="1000"
+              class="ui-group-row__control models__num models__num--wide"
             />
           </label>
-          <label class="settings__field settings__field--full">
-            <span>System prompt</span>
-            <textarea v-model="editChatModel.systemPrompt" rows="3" class="settings__textarea" />
+          <label v-if="!isAgent" class="ui-group-row">
+            <span class="flex-1">Max output tokens</span>
+            <input
+              v-model.number="form.maxOutputTokens"
+              type="number"
+              min="0"
+              placeholder="0"
+              class="ui-group-row__control models__num models__num--wide"
+            />
           </label>
         </div>
-        <div class="settings__actions">
-          <UButton
-            color="primary"
-            variant="solid"
-            size="sm"
-            :loading="loading"
-            @click="saveChatModel(model.id)"
-          >
-            Save
-          </UButton>
-          <UButton color="neutral" variant="outline" size="sm" @click="cancelEdit">Cancel</UButton>
-          <UButton
-            color="error"
-            variant="soft"
-            size="sm"
-            :loading="loading"
-            @click="removeChatModel(model.id)"
-          >
-            Delete
-          </UButton>
-        </div>
-      </template>
+        <p class="ui-hint">
+          Thinking adds an effort picker (Off, Low, Medium, High) to the chat and shows the model's
+          reasoning. Turn it on only for reasoning models: Anthropic, OpenAI o-series / GPT-5,
+          DeepSeek Reasoner and similar.
+        </p>
+        <p class="ui-hint">
+          Images lets the chat attach screenshots (paste, drop or the paperclip); turn it on only
+          for models with image input.
+        </p>
+        <p class="ui-hint">
+          Max context tokens is the model's real window: older messages are left out so a request
+          always fits it. Max output tokens is the answer limit (reasoning included); 0 uses the
+          provider default. Raise it if long answers get cut off.
+        </p>
+      </div>
 
-      <template v-else>
-        <div class="settings__card-head">
-          <div>
-            <h3 class="settings__card-title">{{ model.label }}</h3>
-            <p class="settings__meta">
-              {{ model.provider }} - {{ model.name }} - priority {{ model.priority }}
-            </p>
-          </div>
-          <div class="settings__actions">
-            <UButton color="neutral" variant="soft" size="xs" @click="startEdit(model)"
-              >Edit</UButton
-            >
-            <UButton
-              color="error"
-              variant="soft"
-              size="xs"
-              :loading="loading"
-              @click="removeChatModel(model.id)"
-            >
-              Delete
-            </UButton>
-          </div>
-        </div>
-        <p class="settings__meta">Base URL: {{ model.baseUrl }}</p>
-        <p class="settings__meta">System prompt: {{ model.systemPrompt || 'Not set' }}</p>
-      </template>
-    </div>
-  </section>
+      <div class="models__block">
+        <label for="model-prompt" class="ui-section-label">
+          {{ isAgent ? 'Extra instructions' : 'System prompt' }}
+        </label>
+        <textarea
+          id="model-prompt"
+          v-model="form.systemPrompt"
+          rows="4"
+          class="ui-input"
+          :placeholder="isAgent ? 'Appended to the agent system prompt (optional)' : 'Optional'"
+        />
+      </div>
+
+      <div class="models__actions">
+        <button
+          type="button"
+          class="ui-btn ui-btn--primary ui-btn--lg"
+          :disabled="!valid || (!dirty && !isNew) || loading"
+          @click="save"
+        >
+          {{ isNew ? 'Add model' : 'Save changes' }}
+        </button>
+        <button
+          type="button"
+          class="ui-btn ui-btn--secondary ui-btn--lg"
+          :disabled="!dirty && !isNew"
+          @click="revert"
+        >
+          Cancel
+        </button>
+        <div class="flex-1"></div>
+        <button
+          v-if="!isNew"
+          type="button"
+          class="ui-btn ui-btn--danger ui-btn--lg"
+          :disabled="loading"
+          @click="remove"
+        >
+          Delete model
+        </button>
+      </div>
+    </section>
+  </div>
 </template>
 
 <style scoped>
 @import 'tailwindcss/theme';
 
-.settings__section {
-  @apply flex flex-col gap-3;
+.models {
+  @apply flex flex-wrap items-start gap-6;
 }
 
-.settings__section-head {
+.models__list {
+  @apply flex min-w-0 flex-[1_1_320px] flex-col gap-2;
+}
+
+.models__list-head {
   @apply flex items-center justify-between;
 }
 
-.settings__section-head h2 {
-  @apply text-lg font-semibold text-white;
+.models__row {
+  @apply min-h-[60px] gap-3 px-3.5;
 }
 
-.settings__card {
-  @apply rounded-lg border border-[#333] bg-[#1e1e1e] p-4;
+.models__row--active,
+.models__row--active:hover {
+  background: rgba(10, 132, 255, 0.14) !important;
 }
 
-.settings__card-head {
-  @apply mb-2 flex items-start justify-between gap-3;
+.models__badge {
+  @apply flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-[13px] font-semibold;
+  background: var(--c-surface-3);
+  color: var(--c-text);
 }
 
-.settings__card-title {
-  @apply text-base font-semibold text-white;
+.models__badge--agent {
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
 }
 
-.settings__meta {
-  @apply text-sm text-gray-400;
+.models__badge--new {
+  background: var(--c-accent-fill);
+  color: #fff;
 }
 
-.settings__grid {
-  @apply grid gap-3;
+.models__row-text {
+  @apply flex min-w-0 flex-1 flex-col;
 }
 
-.settings__grid--chat {
-  @apply md:grid-cols-2;
+.models__row-title {
+  @apply truncate text-sm font-medium;
+  color: var(--c-text);
 }
 
-.settings__field {
-  @apply flex flex-col gap-1;
+.models__row-meta {
+  @apply truncate text-xs;
+  color: var(--c-text-4);
 }
 
-.settings__field span {
-  @apply text-xs text-gray-400;
+.models__chevron {
+  @apply flex-none text-sm;
+  color: #636366;
 }
 
-.settings__field--inline {
-  @apply flex-row items-center gap-2 pt-6;
+.models__editor {
+  @apply flex min-w-0 flex-[999_1_480px] flex-col gap-5;
 }
 
-.settings__field--full {
-  @apply md:col-span-2;
+.models__editor-head {
+  @apply flex items-center gap-3;
 }
 
-.settings__input,
-.settings__textarea {
-  @apply w-full rounded-md border border-[#3d3d3d] bg-[#111] px-3 py-2 text-white outline-none;
+.models__editor-icon {
+  @apply flex h-11 w-11 flex-none items-center justify-center rounded-[12px] text-xl;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep-strong);
+  color: var(--c-accent);
 }
 
-.settings__input:focus,
-.settings__textarea:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
+.models__editor-title {
+  @apply truncate text-xl font-semibold tracking-[-0.01em];
+  color: var(--c-text);
 }
 
-.settings__actions {
-  @apply mt-3 flex flex-wrap gap-2;
+.models__block {
+  @apply flex flex-col gap-2;
 }
 
-.settings__empty {
-  @apply rounded-lg border border-dashed border-[#3a3a3a] bg-[#1b1b1b] p-5 text-sm text-gray-400;
+.models__providers {
+  @apply grid w-full grid-cols-3;
+}
+
+.models__providers .ui-segmented__item {
+  @apply h-[34px];
+}
+
+.models__num {
+  @apply w-24 flex-none;
+}
+
+.models__num--wide {
+  @apply w-32;
+}
+
+.models__code {
+  @apply rounded-[5px] px-1.5 py-px;
+  font-family: var(--font-mono);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+}
+
+.models__actions {
+  @apply flex flex-wrap items-center gap-2.5 pt-1;
 }
 </style>

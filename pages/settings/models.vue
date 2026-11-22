@@ -18,10 +18,10 @@ function basicToken(pass: string) {
   return toBase64(new TextEncoder().encode(`${AUTH_USERNAME}:${pass}`))
 }
 
-const views: Array<{ key: SettingsView; label: string; hint: string }> = [
-  { key: 'chat', label: 'Chat models', hint: 'Multiple models configuration' },
-  { key: 'embeddings', label: 'Embeddings', hint: 'Singleton model configuration' },
-  { key: 'summarizer', label: 'Summarizer', hint: 'Singleton model configuration' }
+const views: Array<{ key: SettingsView; label: string }> = [
+  { key: 'chat', label: 'Chat models' },
+  { key: 'embeddings', label: 'Embeddings' },
+  { key: 'summarizer', label: 'Summarizer' }
 ]
 
 const activeView = ref<SettingsView>('chat')
@@ -87,127 +87,109 @@ async function unlockSettings() {
 
 <template>
   <LayoutWrapper title="Settings">
-    <div v-if="checkingAuth" class="settings__auth settings__auth--muted">Checking access...</div>
-
-    <div v-else-if="!isAuthorized" class="settings__auth">
-      <h3 class="settings__auth-title">Protected settings</h3>
-      <p class="settings__auth-subtitle">Enter password to continue</p>
-      <input
-        v-model="password"
-        type="password"
-        class="settings__auth-input"
-        placeholder="Password"
-        @keyup.enter="unlockSettings"
-      />
-      <p v-if="authError" class="settings__auth-error">{{ authError }}</p>
-      <UButton
-        class="settings__auth-button"
-        color="primary"
-        variant="solid"
-        size="md"
-        :disabled="!password.trim()"
-        :loading="authLoading"
-        @click="unlockSettings"
-      >
-        Unlock
-      </UButton>
-    </div>
-
-    <template v-else>
-      <div class="settings__switcher">
+    <template v-if="isAuthorized" #header-actions>
+      <div class="ui-segmented" role="tablist" aria-label="Settings section">
         <button
           v-for="view in views"
           :key="view.key"
           type="button"
-          class="settings__switcher-button"
-          :class="{ 'settings__switcher-button--active': activeView === view.key }"
+          role="tab"
+          class="ui-segmented__item"
+          :aria-selected="activeView === view.key"
           @click="activeView = view.key"
         >
-          <span>{{ view.label }}</span>
-          <small>{{ view.hint }}</small>
+          {{ view.label }}
         </button>
       </div>
-
-      <ClientOnly>
-        <ChatModelsSection
-          v-if="activeView === 'chat'"
-          :models="settingsStore.chatModels"
-          :loading="settingsStore.loadingChat"
-          @create="settingsStore.createChatModel"
-          @update="settingsStore.updateChatModel"
-          @remove="settingsStore.deleteChatModel"
-        />
-
-        <EmbeddingsModelSection
-          v-else-if="activeView === 'embeddings'"
-          :model="settingsStore.embeddings"
-          :loading="settingsStore.loadingEmbeddings"
-          @save="settingsStore.updateEmbeddings"
-        />
-
-        <SummarizerModelSection
-          v-else
-          :model="settingsStore.summarizer"
-          :loading="settingsStore.loadingSummarizer"
-          @save="settingsStore.updateSummarizer"
-        />
-      </ClientOnly>
     </template>
+
+    <div v-if="checkingAuth" class="ui-subtitle">Checking access…</div>
+
+    <form v-else-if="!isAuthorized" class="lock" @submit.prevent="unlockSettings">
+      <div class="lock__icon"><Icon name="lucide:lock" /></div>
+      <h2 class="lock__title">Settings are locked</h2>
+      <p class="lock__text">Enter the admin password to manage models and API keys.</p>
+      <label for="settings-password" class="ui-sr-only">Password</label>
+      <input
+        id="settings-password"
+        v-model="password"
+        type="password"
+        class="ui-input lock__input"
+        placeholder="Password"
+        autocomplete="current-password"
+      />
+      <p v-if="authError" class="lock__error" role="alert">{{ authError }}</p>
+      <button
+        type="submit"
+        class="ui-btn ui-btn--primary ui-btn--lg lock__button"
+        :disabled="!password.trim() || authLoading"
+      >
+        <Icon v-if="authLoading" name="lucide:loader-circle" class="animate-spin" />
+        Unlock
+      </button>
+    </form>
+
+    <ClientOnly v-else>
+      <ChatModelsSection
+        v-if="activeView === 'chat'"
+        :models="settingsStore.chatModels"
+        :loading="settingsStore.loadingChat"
+        @create="settingsStore.createChatModel"
+        @update="settingsStore.updateChatModel"
+        @remove="settingsStore.deleteChatModel"
+      />
+
+      <EmbeddingsModelSection
+        v-else-if="activeView === 'embeddings'"
+        :model="settingsStore.embeddings"
+        :loading="settingsStore.loadingEmbeddings"
+        @save="settingsStore.updateEmbeddings"
+      />
+
+      <SummarizerModelSection
+        v-else
+        :model="settingsStore.summarizer"
+        :loading="settingsStore.loadingSummarizer"
+        @save="settingsStore.updateSummarizer"
+      />
+    </ClientOnly>
   </LayoutWrapper>
 </template>
 
 <style scoped>
 @import 'tailwindcss/theme';
 
-.settings__switcher {
-  @apply mb-4 grid gap-2 md:grid-cols-3;
+.lock {
+  @apply mx-auto mt-10 flex w-full max-w-[380px] flex-col items-center gap-3 text-center;
 }
 
-.settings__switcher-button {
-  @apply flex cursor-pointer flex-col rounded-lg border border-[#3a3a3a] bg-[#1d1d1d] p-3 text-left text-white transition-colors duration-200;
+.lock__icon {
+  @apply mb-1 flex h-12 w-12 items-center justify-center rounded-[14px] text-xl;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep-strong);
+  color: var(--c-text-2);
 }
 
-.settings__switcher-button:hover {
-  @apply border-[#4a4a4a] bg-[#242424];
+.lock__title {
+  @apply m-0 text-xl font-semibold;
+  color: var(--c-text);
 }
 
-.settings__switcher-button--active {
-  @apply border-[#007ca5] bg-[#11313f];
+.lock__text {
+  @apply m-0 mb-2 text-sm;
+  color: var(--c-text-3);
 }
 
-.settings__switcher-button small {
-  @apply mt-1 text-xs text-gray-400;
+.lock__input {
+  @apply h-11 text-center;
 }
 
-.settings__auth {
-  @apply mx-auto mt-8 flex w-full max-w-md flex-col gap-3 rounded-lg border border-[#333] bg-[#1d1d1d] p-4;
+.lock__error {
+  @apply m-0 text-sm;
+  color: var(--c-danger);
 }
 
-.settings__auth--muted {
-  @apply text-sm text-gray-400;
-}
-
-.settings__auth-title {
-  @apply text-lg font-semibold text-white;
-}
-
-.settings__auth-subtitle {
-  @apply text-sm text-gray-400;
-}
-
-.settings__auth-input {
-  @apply w-full rounded-md border border-[#3d3d3d] bg-[#111] px-3 py-2 text-white outline-none;
-}
-
-.settings__auth-input:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
-}
-
-.settings__auth-error {
-  @apply text-sm text-red-400;
-}
-
-.settings__auth-button {
-  @apply mt-1 w-full justify-center rounded-md font-medium;
+.lock__button {
+  @apply w-full;
 }
 </style>

@@ -12,10 +12,10 @@ const emit = defineEmits<{
 }>()
 
 const defaultOptions: ProviderOption[] = [
-  { value: 'text', label: 'Text', icon: 'material-symbols:text-snippet-outline-rounded' },
-  { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
+  { value: 'text', label: 'Text', icon: 'lucide:text' },
+  { value: 'files', label: 'Files', icon: 'lucide:upload' },
   { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' },
-  { value: 'git', label: 'Git', icon: 'mdi:git' }
+  { value: 'git', label: 'Git', icon: 'simple-icons:git' }
 ]
 
 function selectProvider(value: UploadProvider) {
@@ -25,22 +25,19 @@ function selectProvider(value: UploadProvider) {
 </script>
 
 <template>
-  <div class="space-provider-selector">
+  <div class="ui-segmented space-provider-selector" role="radiogroup" aria-label="Source">
     <button
       v-for="option in props.items ?? defaultOptions"
       :key="option.value"
       type="button"
-      class="space-provider-selector__button"
-      :class="{
-        'space-provider-selector__button--active': option.value === props.modelValue
-      }"
+      role="radio"
+      class="ui-segmented__item space-provider-selector__item"
+      :aria-checked="option.value === props.modelValue"
       :disabled="props.disabled"
       @click="selectProvider(option.value)"
     >
-      <span class="space-provider-selector__icon-wrap">
-        <Icon :name="option.icon" class="space-provider-selector__icon" />
-      </span>
-      <span class="space-provider-selector__label">{{ option.label }}</span>
+      <Icon :name="option.icon" class="space-provider-selector__icon" />
+      <span>{{ option.label }}</span>
     </button>
   </div>
 </template>
@@ -49,57 +46,15 @@ function selectProvider(value: UploadProvider) {
 @import 'tailwindcss/theme';
 
 .space-provider-selector {
-  @apply flex flex-wrap gap-3.5;
+  @apply grid w-full grid-flow-col;
+  grid-auto-columns: minmax(0, 1fr);
 }
 
-.space-provider-selector__button {
-  @apply inline-flex flex-col items-center gap-2 border-none bg-transparent;
-  color: #a9a9a9;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    color 0.2s ease;
-}
-
-.space-provider-selector__button:hover:not(:disabled) {
-  color: #f1f1f1;
-  transform: translateY(-1px);
-}
-
-.space-provider-selector__button:disabled {
-  @apply cursor-not-allowed opacity-[0.65];
-}
-
-.space-provider-selector__icon-wrap {
-  @apply inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-full border border-[#3a3a3a];
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.07), transparent 62%),
-    linear-gradient(180deg, #2c2c2c 0%, #171717 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 8px 24px rgba(0, 0, 0, 0.22);
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.space-provider-selector__button--active .space-provider-selector__icon-wrap {
-  border-color: rgba(210, 210, 210, 0.5);
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.14), transparent 58%),
-    linear-gradient(180deg, #3a3a3a 0%, #1c1c1c 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 10px 24px rgba(0, 0, 0, 0.28);
+.space-provider-selector__item {
+  @apply h-[34px];
 }
 
 .space-provider-selector__icon {
-  @apply text-[1.35rem];
-}
-
-.space-provider-selector__label {
-  @apply text-[0.8rem] font-semibold;
-  letter-spacing: 0.01em;
+  @apply flex-none text-sm;
 }
 </style>

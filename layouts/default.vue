@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import SidebarContainer from '~/components/layout/SidebarContainer.vue'
+import NewChatDialog from '~/components/layout/NewChatDialog.vue'
 
 useHead({
   title: 'Agent',
-  meta: [{ name: 'theme-color', content: '#212121' }]
+  meta: [{ name: 'theme-color', content: '#000000' }]
 })
 </script>
 
@@ -11,6 +12,7 @@ useHead({
   <UApp :toaster="{ position: 'bottom-right', duration: 5000 }">
     <div class="layout">
       <ConfirmDialog />
+      <NewChatDialog />
       <SidebarContainer />
 
       <main class="layout__main">
@@ -23,39 +25,14 @@ useHead({
 </template>
 
 <style>
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #474747 transparent;
-}
-
-*::-webkit-scrollbar {
-  width: 1px;
-}
-*::-webkit-scrollbar-thumb {
-  background-color: #007ca5ff;
-  border-radius: 4px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-body {
-  @apply bg-[#212121];
-}
+@import 'tailwindcss/theme';
 
 .layout {
-  @apply flex h-screen bg-[#212121];
-  font-family: 'Noto Sans', sans-serif;
+  @apply flex h-dvh overflow-hidden;
+  background: var(--c-bg);
 }
 
 .layout__main {
-  @apply ml-[280px] flex flex-1 flex-col transition-all duration-300;
-  transition: margin-left 0.3s ease;
-}
-
-@media (max-width: theme('screens.lg')) {
-  .layout__main {
-    @apply ml-[0];
-  }
+  @apply flex min-w-0 flex-1 flex-col overflow-hidden;
 }
 </style>

@@ -57,6 +57,10 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short'
 })
 
+function extLabel(extension?: string) {
+  return (extension || 'file').split('.').pop()!.slice(0, 4)
+}
+
 function formatDate(iso: string) {
   const date = new Date(iso)
   return Number.isNaN(date.getTime()) ? iso : dateFormatter.format(date)
@@ -126,24 +130,21 @@ async function remove(file: FileRs) {
 </script>
 
 <template>
-  <LayoutWrapper title="Files">
+  <LayoutWrapper title="Files" subtitle="Encrypted file storage">
     <template #header-actions>
-      <UButton
-        color="primary"
-        variant="solid"
-        size="sm"
+      <button
+        type="button"
+        class="ui-btn"
+        :class="uploadOpen ? 'ui-btn--secondary' : 'ui-btn--primary'"
         :disabled="uploading"
         @click="toggleUpload"
       >
-        <Icon
-          :name="uploadOpen ? 'material-symbols:close' : 'material-symbols:upload'"
-          class="mr-1"
-        />
+        <Icon :name="uploadOpen ? 'lucide:x' : 'lucide:upload'" />
         {{ uploadOpen ? 'Cancel' : 'Upload' }}
-      </UButton>
+      </button>
     </template>
 
-    <div v-if="uploadOpen" class="files__upload">
+    <div v-if="uploadOpen" class="ui-card files__upload">
       <FilesDropzone v-model="selectedItems" :disabled="uploading || hasPending" />
 
       <div v-if="uploading || hasPending" class="files__progress">
@@ -151,7 +152,7 @@ async function remove(file: FileRs) {
           <span class="files__progress-label">
             <Icon
               v-if="preparingKey"
-              name="material-symbols:progress-activity"
+              name="lucide:loader-circle"
               class="mr-1 animate-spin align-[-2px]"
             />
             {{
@@ -173,81 +174,77 @@ async function remove(file: FileRs) {
 
       <div class="files__upload-actions">
         <template v-if="uploading">
-          <UButton color="neutral" variant="outline" size="sm" @click="uploader.cancel()">
+          <button type="button" class="ui-btn ui-btn--secondary" @click="uploader.cancel()">
             Stop
-          </UButton>
+          </button>
         </template>
         <template v-else-if="hasPending">
-          <UButton color="primary" variant="solid" size="sm" @click="retryUpload"> Resume </UButton>
-          <UButton color="neutral" variant="outline" size="sm" @click="discardUpload">
+          <button type="button" class="ui-btn ui-btn--primary" @click="retryUpload">Resume</button>
+          <button type="button" class="ui-btn ui-btn--secondary" @click="discardUpload">
             Discard
-          </UButton>
+          </button>
         </template>
         <template v-else>
-          <UButton
-            color="primary"
-            variant="solid"
-            size="sm"
+          <button
+            type="button"
+            class="ui-btn ui-btn--primary"
             :disabled="!selectedItems.length"
             @click="upload"
           >
-            Upload
-          </UButton>
-          <UButton color="neutral" variant="outline" size="sm" @click="toggleUpload">
-            Cancel
-          </UButton>
+            Upload {{ selectedItems.length ? `${selectedItems.length} files` : '' }}
+          </button>
         </template>
       </div>
     </div>
 
-    <ul v-if="loading && !files.length" class="files__list">
-      <li v-for="n in 3" :key="n" class="files__item">
-        <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
-        <USkeleton class="h-5 w-24 animate-pulse rounded bg-gray-700/50" />
-      </li>
-    </ul>
+    <div v-if="loading && !files.length" class="ui-group">
+      <div v-for="n in 4" :key="n" class="ui-group-row files__row">
+        <USkeleton class="h-9 w-9 rounded-[9px]" />
+        <USkeleton class="h-4 w-56 rounded" />
+      </div>
+    </div>
 
-    <div v-else-if="!files.length" class="files__empty">No files yet.</div>
+    <div v-else-if="!files.length" class="ui-empty">
+      <Icon name="lucide:folder-open" class="ui-empty__icon" />
+      <p class="ui-empty__title">No files yet</p>
+      <p class="text-sm">Uploaded files are encrypted with your upload key.</p>
+    </div>
 
     <template v-else>
-      <ul class="files__list" :class="{ 'files__list--loading': loading }">
-        <li v-for="file in files" :key="file.id" class="files__item">
-          <div class="files__info">
-            <span class="files__ext">{{ file.extension }}</span>
-            <div class="files__meta">
-              <span class="files__name" :title="file.fileName">{{ file.fileName }}</span>
-              <span class="files__details">
-                {{ formatSize(file.size) }} · {{ formatDate(file.createdAt) }}
-              </span>
-            </div>
+      <div class="ui-group" :class="{ 'files__list--loading': loading }">
+        <div v-for="file in files" :key="file.id" class="ui-group-row files__row">
+          <span class="files__ext" :title="file.extension">{{ extLabel(file.extension) }}</span>
+          <div class="files__meta">
+            <span class="files__name" :title="file.fileName">{{ file.fileName }}</span>
+            <span class="files__details">
+              {{ formatSize(file.size) }} · {{ formatDate(file.createdAt) }}
+            </span>
           </div>
-          <div class="files__actions">
-            <button
-              class="files__action"
-              title="Download"
-              :disabled="downloadingId === file.id"
-              @click="download(file)"
-            >
-              <Icon
-                :name="
-                  downloadingId === file.id
-                    ? 'material-symbols:progress-activity'
-                    : 'material-symbols:download'
-                "
-                :class="{ 'animate-spin': downloadingId === file.id }"
-              />
-            </button>
-            <button
-              class="files__action files__action--delete"
-              title="Delete"
-              :disabled="deletingId === file.id"
-              @click="remove(file)"
-            >
-              <Icon name="material-symbols:delete-outline" />
-            </button>
-          </div>
-        </li>
-      </ul>
+          <button
+            type="button"
+            class="ui-icon-btn"
+            :aria-label="`Download ${file.fileName}`"
+            title="Download"
+            :disabled="downloadingId === file.id"
+            @click="download(file)"
+          >
+            <Icon
+              :name="downloadingId === file.id ? 'lucide:loader-circle' : 'lucide:download'"
+              :class="{ 'animate-spin': downloadingId === file.id }"
+            />
+          </button>
+          <button
+            type="button"
+            class="ui-icon-btn ui-icon-btn--danger"
+            :aria-label="`Delete ${file.fileName}`"
+            title="Delete"
+            :disabled="deletingId === file.id"
+            @click="remove(file)"
+          >
+            <Icon name="lucide:trash-2" />
+          </button>
+        </div>
+      </div>
 
       <div v-if="totalPages > 1" class="files__pagination">
         <UPagination
@@ -255,6 +252,8 @@ async function remove(file: FileRs) {
           :total="totalElements"
           :items-per-page="size"
           :disabled="loading"
+          variant="ghost"
+          active-variant="soft"
         />
       </div>
     </template>
@@ -272,7 +271,7 @@ async function remove(file: FileRs) {
 @import 'tailwindcss/theme';
 
 .files__upload {
-  @apply mb-3 flex flex-col gap-3 rounded-lg border border-[#333] bg-[#1e1e1e] p-3;
+  @apply flex flex-col gap-4 p-4;
 }
 
 .files__progress {
@@ -284,82 +283,62 @@ async function remove(file: FileRs) {
 }
 
 .files__progress-label {
-  @apply truncate text-gray-200;
+  @apply truncate;
+  color: var(--c-text-2);
 }
 
 .files__progress-value {
-  @apply shrink-0 text-gray-400 tabular-nums;
+  @apply shrink-0 tabular-nums;
+  color: var(--c-text-4);
 }
 
 .files__progress-track {
-  @apply h-1.5 overflow-hidden rounded-full bg-[#2a2a2a];
+  @apply h-1.5 overflow-hidden rounded-full;
+  background: var(--c-surface-3);
 }
 
 .files__progress-bar {
-  @apply h-full rounded-full bg-blue-500 transition-[width] duration-200;
+  @apply h-full rounded-full transition-[width] duration-200;
+  background: var(--c-accent);
 }
 
 .files__progress-bar--failed {
-  @apply bg-amber-500;
+  background: var(--c-warning);
 }
 
 .files__upload-actions {
   @apply flex flex-wrap gap-2;
 }
 
-.files__list {
-  @apply flex flex-col gap-2 transition-opacity duration-200;
-}
-
 .files__list--loading {
-  @apply pointer-events-none opacity-60;
+  @apply pointer-events-none opacity-60 transition-opacity;
 }
 
-.files__item {
-  @apply flex items-center justify-between gap-3 rounded-md border border-[#333] bg-[#1e1e1e] p-3;
-}
-
-.files__info {
-  @apply flex min-w-0 items-center gap-3;
+.files__row {
+  @apply min-h-[60px] gap-3 pr-2;
 }
 
 .files__ext {
-  @apply flex h-10 w-12 shrink-0 items-center justify-center rounded-md bg-blue-500/15 text-xs font-semibold text-blue-300 uppercase;
+  @apply flex h-9 w-9 flex-none items-center justify-center rounded-[9px] text-[10px] font-semibold uppercase;
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
 }
 
 .files__meta {
-  @apply flex min-w-0 flex-col;
+  @apply flex min-w-0 flex-1 flex-col;
 }
 
 .files__name {
-  @apply truncate text-base text-gray-100;
+  @apply truncate text-sm font-medium;
+  color: var(--c-text);
 }
 
 .files__details {
-  @apply text-xs text-gray-400;
-}
-
-.files__actions {
-  @apply flex shrink-0 items-center gap-1;
-}
-
-.files__action {
-  @apply cursor-pointer rounded-md border-none bg-transparent p-1 text-[1.2rem] text-gray-400 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50;
-}
-
-.files__action:hover:not(:disabled) {
-  @apply text-white;
-}
-
-.files__action--delete:hover:not(:disabled) {
-  @apply text-red-500;
+  @apply text-xs;
+  color: var(--c-text-4);
 }
 
 .files__pagination {
-  @apply mt-2 flex justify-center;
-}
-
-.files__empty {
-  @apply rounded-lg border border-dashed border-[#3a3a3a] bg-[#1b1b1b] p-5 text-sm text-gray-400;
+  @apply flex justify-center;
 }
 </style>

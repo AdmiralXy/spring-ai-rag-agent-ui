@@ -1,2 +1,630 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+/*
+ * Design system: black, macOS / iOS-like.
+ * Surfaces follow the iOS dark system palette, blue accent (#0A84FF).
+ * Component styles use these tokens instead of hard-coded colors.
+ */
+
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+:root,
+.dark {
+  color-scheme: dark;
+
+  --c-bg: #000000;
+  --c-sidebar: #0c0c0e;
+  --c-surface: #111113;
+  --c-surface-2: #1c1c1e;
+  --c-surface-3: #2c2c2e;
+  --c-surface-4: #3a3a3c;
+  --c-code: #0b0b0c;
+
+  --c-sep: rgba(255, 255, 255, 0.07);
+  --c-sep-strong: rgba(255, 255, 255, 0.12);
+  --c-hover: rgba(255, 255, 255, 0.06);
+  --c-selected: rgba(255, 255, 255, 0.08);
+
+  --c-text: #f5f5f7;
+  --c-text-2: #d1d1d6;
+  --c-text-3: #a1a1a6;
+  --c-text-4: #8e8e93;
+
+  --c-accent: #409cff;
+  --c-accent-hover: #6fb4ff;
+  --c-accent-fill: #0071e3;
+  --c-accent-fill-hover: #0a7cf0;
+  --c-accent-soft: rgba(10, 132, 255, 0.16);
+  --c-accent-ring: rgba(64, 156, 255, 0.45);
+
+  --c-success: #30d158;
+  --c-warning: #ffd60a;
+  --c-danger: #ff6961;
+  --c-danger-soft: rgba(255, 105, 97, 0.12);
+
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 22px;
+
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.6);
+
+  /* Nuxt UI tokens */
+  --ui-primary: #0a84ff;
+  --ui-bg: var(--c-bg);
+  --ui-bg-muted: var(--c-surface);
+  --ui-bg-elevated: var(--c-surface-2);
+  --ui-bg-accented: var(--c-surface-3);
+  --ui-bg-inverted: var(--c-text);
+  --ui-text: var(--c-text-2);
+  --ui-text-dimmed: var(--c-text-4);
+  --ui-text-muted: var(--c-text-3);
+  --ui-text-toned: var(--c-text-2);
+  --ui-text-highlighted: var(--c-text);
+  --ui-text-inverted: #000000;
+  --ui-border: var(--c-sep-strong);
+  --ui-border-muted: var(--c-sep);
+  --ui-border-accented: rgba(255, 255, 255, 0.18);
+  --ui-border-inverted: var(--c-text);
+  --ui-radius: 0.625rem;
+}
+
+html,
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(10, 132, 255, 0.35);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-accent-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Primitives are unlayered on purpose: Nuxt Icon injects `@layer components` styles at the top of
+ * <head> on the client, which would order the components layer before Tailwind's reset (base).
+ */
+/* ---------- Page ---------- */
+.ui-page {
+  @apply mx-auto flex w-full max-w-[1120px] flex-col gap-6 px-6 pt-7 pb-12 max-lg:px-4 max-lg:pt-16;
+}
+
+.ui-page__header {
+  @apply flex flex-wrap items-center gap-4;
+}
+
+.ui-title {
+  @apply m-0 flex-1 text-[28px] leading-tight font-bold tracking-[-0.02em];
+  color: var(--c-text);
+}
+
+.ui-subtitle {
+  @apply text-sm;
+  color: var(--c-text-4);
+}
+
+.ui-section-label {
+  @apply px-1 text-[12px] font-semibold tracking-[0.04em] uppercase;
+  color: var(--c-text-4);
+}
+
+.ui-hint {
+  @apply px-1 text-xs leading-relaxed;
+  color: var(--c-text-4);
+}
+
+/* ---------- Surfaces ---------- */
+.ui-card {
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  border: 1px solid var(--c-sep);
+}
+
+/* iOS-style grouped list */
+.ui-group {
+  @apply overflow-hidden;
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  border: 1px solid var(--c-sep);
+}
+
+.ui-group-row {
+  @apply flex min-h-12 items-center gap-4 px-4;
+  color: var(--c-text);
+}
+
+.ui-group-row + .ui-group-row {
+  border-top: 1px solid var(--c-sep);
+}
+
+button.ui-group-row,
+a.ui-group-row {
+  @apply w-full cursor-pointer text-left transition-colors;
+}
+
+button.ui-group-row:hover,
+a.ui-group-row:hover {
+  background: var(--c-hover);
+}
+
+.ui-group-row__label {
+  @apply w-40 flex-none max-sm:w-28;
+}
+
+.ui-group-row__control {
+  @apply min-w-0 flex-1 border-0 bg-transparent text-right outline-none;
+  color: var(--c-text-2);
+}
+
+.ui-group-row__control::placeholder {
+  color: var(--c-text-4);
+}
+
+.ui-group-row__control:focus {
+  color: var(--c-text);
+}
+
+select.ui-group-row__control {
+  @apply cursor-pointer appearance-none;
+  direction: rtl;
+}
+
+select.ui-group-row__control option {
+  direction: ltr;
+  background: var(--c-surface-2);
+}
+
+/* ---------- Inputs ---------- */
+.ui-input {
+  @apply w-full min-w-0 px-3.5 text-[14px] transition-[border-color,box-shadow] outline-none;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep);
+  color: var(--c-text);
+}
+
+textarea.ui-input {
+  @apply h-auto py-2.5 leading-relaxed;
+  resize: vertical;
+}
+
+.ui-input::placeholder {
+  color: var(--c-text-4);
+}
+
+.ui-input:focus {
+  border-color: var(--c-accent-ring);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.ui-input:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+/* ---------- Buttons ---------- */
+.ui-btn {
+  @apply inline-flex h-9 flex-none cursor-pointer items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-medium whitespace-nowrap transition-colors select-none;
+  border: 1px solid transparent;
+  color: var(--c-text);
+}
+
+.ui-btn:disabled {
+  @apply cursor-not-allowed opacity-45;
+}
+
+.ui-btn--lg {
+  @apply h-10 px-5 text-sm;
+}
+
+.ui-btn--sm {
+  @apply h-[30px] px-3 text-[12.5px];
+}
+
+.ui-btn--primary {
+  background: var(--c-accent-fill);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: var(--c-accent-fill-hover);
+}
+
+.ui-btn--secondary {
+  background: var(--c-surface-2);
+  border-color: var(--c-sep-strong);
+}
+
+.ui-btn--secondary:hover:not(:disabled) {
+  background: var(--c-surface-3);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--c-text-2);
+}
+
+.ui-btn--ghost:hover:not(:disabled) {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+
+.ui-btn--tinted {
+  background: transparent;
+  color: var(--c-accent);
+}
+
+.ui-btn--tinted:hover:not(:disabled) {
+  background: var(--c-accent-soft);
+}
+
+.ui-btn--danger {
+  background: transparent;
+  color: var(--c-danger);
+}
+
+.ui-btn--danger:hover:not(:disabled) {
+  background: var(--c-danger-soft);
+}
+
+.ui-icon-btn {
+  @apply inline-flex h-8 w-8 flex-none cursor-pointer items-center justify-center rounded-[9px] border-0 bg-transparent text-[17px] transition-colors;
+  color: var(--c-text-3);
+}
+
+.ui-icon-btn:hover:not(:disabled) {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+
+.ui-icon-btn:disabled {
+  @apply cursor-not-allowed opacity-40;
+}
+
+.ui-icon-btn--danger:hover:not(:disabled) {
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+}
+
+/* ---------- Segmented control ---------- */
+.ui-segmented {
+  @apply inline-flex gap-0.5 p-0.5;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+
+.ui-segmented__item {
+  @apply inline-flex h-[30px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border-0 bg-transparent px-3.5 text-[13px] font-medium whitespace-nowrap transition-colors;
+  color: var(--c-text-3);
+}
+
+.ui-segmented__item:hover:not([aria-selected='true']):not([aria-checked='true']) {
+  color: var(--c-text);
+}
+
+.ui-segmented__item[aria-selected='true'],
+.ui-segmented__item[aria-checked='true'] {
+  background: var(--c-surface-4);
+  color: var(--c-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.ui-segmented__item:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+/* ---------- Switch ---------- */
+.ui-switch {
+  @apply relative inline-flex h-[31px] w-[51px] flex-none cursor-pointer rounded-full border-0 p-0.5 transition-colors;
+  background: #39393d;
+}
+
+.ui-switch::after {
+  @apply h-[27px] w-[27px] rounded-full bg-white transition-transform content-[''];
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.ui-switch[aria-checked='true'] {
+  background: var(--c-success);
+}
+
+.ui-switch[aria-checked='true']::after {
+  transform: translateX(20px);
+}
+
+/* ---------- Misc ---------- */
+.ui-chip {
+  @apply inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-[11.5px] font-medium whitespace-nowrap;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+}
+
+.ui-chip--accent {
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
+}
+
+.ui-badge {
+  @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11px] font-medium;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--c-text-2);
+}
+
+.ui-empty {
+  @apply flex flex-col items-center justify-center gap-2 px-6 py-14 text-center;
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--c-sep-strong);
+  color: var(--c-text-4);
+}
+
+.ui-empty__icon {
+  @apply mb-1 text-4xl;
+  color: var(--c-text-4);
+}
+
+.ui-empty__title {
+  @apply text-[15px] font-semibold;
+  color: var(--c-text);
+}
+
+.ui-mono {
+  font-family: var(--font-mono);
+}
+
+.ui-sr-only {
+  @apply sr-only;
+}
+
+/* ---------- Markdown (assistant answers) ---------- */
+.md {
+  @apply text-[15px] leading-[1.6] break-words;
+  color: #e5e5ea;
+  overflow-wrap: anywhere;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.md p {
+  margin: 0 0 0.75em;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 1.3em 0 0.5em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--c-text);
+  line-height: 1.3;
+}
+
+.md h1 {
+  font-size: 1.4em;
+}
+
+.md h2 {
+  font-size: 1.22em;
+}
+
+.md h3 {
+  font-size: 1.08em;
+}
+
+.md h4 {
+  font-size: 1em;
+}
+
+.md strong {
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.md a {
+  color: var(--c-accent);
+  text-decoration: none;
+}
+
+.md a:hover {
+  color: var(--c-accent-hover);
+  text-decoration: underline;
+}
+
+.md ul,
+.md ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.4em;
+}
+
+.md ul {
+  list-style-type: disc;
+}
+
+.md ol {
+  list-style-type: decimal;
+}
+
+.md li {
+  margin: 0.25em 0;
+}
+
+.md li::marker {
+  color: var(--c-text-4);
+}
+
+.md blockquote {
+  margin: 0 0 0.75em;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--c-surface-4);
+  color: var(--c-text-3);
+}
+
+.md hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid var(--c-sep-strong);
+}
+
+.md :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 0.12em 0.38em;
+  border-radius: 6px;
+  background: var(--c-surface-2);
+  color: var(--c-text);
+}
+
+.md table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.9em;
+  border-collapse: collapse;
+  font-size: 0.93em;
+}
+
+.md th,
+.md td {
+  padding: 0.45em 0.8em;
+  border: 1px solid var(--c-sep-strong);
+  text-align: left;
+}
+
+.md th {
+  background: var(--c-surface);
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.md-code {
+  margin: 0 0 0.9em;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--c-code);
+  border: 1px solid var(--c-sep);
+}
+
+.md-code__head {
+  @apply flex h-9 items-center justify-between pr-1.5 pl-3.5 text-xs;
+  border-bottom: 1px solid var(--c-sep);
+  color: var(--c-text-3);
+}
+
+.md-code__copy {
+  @apply inline-flex h-[26px] cursor-pointer items-center gap-1.5 rounded-[7px] border-0 bg-transparent px-2.5 text-xs transition-colors;
+  color: var(--c-text-3);
+}
+
+.md-code__copy:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+
+.md-code pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e5e5ea;
+}
+
+.md-code pre code {
+  font-family: inherit;
+  background: transparent;
+  padding: 0;
+}
+
+/* Syntax highlighting (highlight.js), Xcode dark inspired */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-built_in.hljs-keyword {
+  color: #ff7ab2;
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: #ff8170;
+}
+.hljs-number,
+.hljs-symbol {
+  color: #d9c97c;
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-type,
+.hljs-built_in {
+  color: #6bdfff;
+}
+.hljs-title.function_,
+.hljs-function .hljs-title {
+  color: #67b7a4;
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-variable {
+  color: #acf2e4;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #7f8c98;
+  font-style: italic;
+}
+.hljs-meta,
+.hljs-meta .hljs-keyword {
+  color: #fd8f3f;
+}
+.hljs-tag,
+.hljs-name {
+  color: #ff7ab2;
+}
+.hljs-deletion {
+  color: #ff6961;
+}
+.hljs-section {
+  color: #f5f5f7;
+  font-weight: 600;
+}

@@ -122,11 +122,7 @@ function clear() {
     >
       <div class="files-dropzone__icon">
         <Icon
-          :name="
-            scanning
-              ? 'material-symbols:progress-activity'
-              : 'material-symbols:upload-file-outline-rounded'
-          "
+          :name="scanning ? 'lucide:loader-circle' : 'lucide:upload'"
           :class="{ 'animate-spin': scanning }"
         />
       </div>
@@ -154,13 +150,7 @@ function clear() {
           :key="`${entry.folder}:${entry.name}`"
           class="files-dropzone__chip"
         >
-          <Icon
-            :name="
-              entry.folder
-                ? 'material-symbols:folder-zip-outline-rounded'
-                : 'material-symbols:description-outline-rounded'
-            "
-          />
+          <Icon :name="entry.folder ? 'lucide:folder-archive' : 'lucide:file'" />
           <span class="files-dropzone__chip-name">{{
             entry.folder ? `${entry.name}.zip` : entry.name
           }}</span>
@@ -189,38 +179,41 @@ function clear() {
 }
 
 .files-dropzone__surface {
-  @apply flex min-h-40 cursor-pointer items-center justify-center gap-4 rounded-2xl border border-dashed border-[#4a4a4a] p-6 transition-all duration-200 max-sm:flex-col max-sm:text-center;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(31, 31, 31, 0.92));
+  @apply flex min-h-36 cursor-pointer items-center justify-center gap-4 p-6 transition-colors max-sm:flex-col max-sm:text-center;
+  border-radius: var(--r-lg);
+  border: 1.5px dashed var(--c-sep-strong);
+  background: var(--c-surface-2);
 }
 
 .files-dropzone__surface:hover:not(.files-dropzone__surface--disabled),
 .files-dropzone__surface--dragging {
-  @apply -translate-y-px border-blue-400/80;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.16), transparent 40%),
-    linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(31, 31, 31, 0.95));
+  border-color: var(--c-accent-ring);
+  background: rgba(10, 132, 255, 0.08);
 }
 
 .files-dropzone__surface--disabled {
-  @apply cursor-not-allowed opacity-70;
+  @apply cursor-not-allowed opacity-60;
 }
 
 .files-dropzone__icon {
-  @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-2xl text-blue-300;
+  @apply inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] text-xl;
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
 }
 
 .files-dropzone__title {
-  @apply text-base font-semibold text-neutral-100;
+  @apply text-[15px] font-semibold;
+  color: var(--c-text);
 }
 
 .files-dropzone__description {
-  @apply mt-1 text-sm text-neutral-400;
+  @apply mt-1 text-sm;
+  color: var(--c-text-3);
 }
 
 .files-dropzone__link {
-  @apply cursor-pointer text-blue-300 underline-offset-2 hover:underline;
+  @apply cursor-pointer border-0 bg-transparent p-0 underline-offset-2 hover:underline;
+  color: var(--c-accent);
 }
 
 .files-dropzone__footer {
@@ -228,11 +221,13 @@ function clear() {
 }
 
 .files-dropzone__chips {
-  @apply flex min-w-0 flex-1 flex-wrap gap-2;
+  @apply m-0 flex min-w-0 flex-1 list-none flex-wrap gap-1.5 p-0;
 }
 
 .files-dropzone__chip {
-  @apply inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#343434] bg-[#171717] px-3 py-1.5 text-[0.8rem] text-neutral-300;
+  @apply inline-flex h-7 max-w-full items-center gap-1.5 rounded-full px-2.5 text-xs;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
 }
 
 .files-dropzone__chip-name {
@@ -240,14 +235,16 @@ function clear() {
 }
 
 .files-dropzone__chip-meta {
-  @apply shrink-0 text-neutral-500;
+  @apply shrink-0;
+  color: var(--c-text-4);
 }
 
 .files-dropzone__clear {
-  @apply cursor-pointer rounded-full border border-[#393939] px-3.5 py-1.5 text-neutral-300 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-65;
+  @apply h-[30px] cursor-pointer rounded-full border-0 bg-transparent px-3 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50;
+  color: var(--c-danger);
 }
 
 .files-dropzone__clear:hover:not(:disabled) {
-  @apply border-red-500 text-red-300;
+  background: var(--c-danger-soft);
 }
 </style>

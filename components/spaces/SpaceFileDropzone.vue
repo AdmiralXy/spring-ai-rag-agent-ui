@@ -73,7 +73,7 @@ function clearFiles() {
       @drop.prevent="onDrop"
     >
       <div class="space-file-dropzone__icon-wrap">
-        <Icon name="material-symbols:upload-file-outline-rounded" />
+        <Icon name="lucide:upload" />
       </div>
       <div class="space-file-dropzone__content">
         <p class="space-file-dropzone__title">Drop files here</p>
@@ -86,7 +86,7 @@ function clearFiles() {
     <div v-if="fileNames.length" class="space-file-dropzone__footer">
       <ul class="space-file-dropzone__files">
         <li v-for="fileName in fileNames" :key="fileName" class="space-file-dropzone__file">
-          <Icon name="material-symbols:description-outline-rounded" />
+          <Icon name="lucide:file-text" />
           <span>{{ fileName }}</span>
         </li>
       </ul>
@@ -107,144 +107,70 @@ function clearFiles() {
 @import 'tailwindcss/theme';
 
 .space-file-dropzone {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
+  @apply flex flex-col gap-3.5;
 }
 
 .space-file-dropzone__input {
-  display: none;
+  @apply hidden;
 }
 
 .space-file-dropzone__surface {
-  display: flex;
-  min-height: 10rem;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  border: 1px dashed #4a4a4a;
-  border-radius: 1rem;
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(31, 31, 31, 0.92));
-  padding: 1.5rem;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    transform 0.2s ease;
+  @apply flex min-h-36 cursor-pointer items-center justify-center gap-4 p-6 transition-colors max-sm:flex-col max-sm:text-center;
+  border-radius: var(--r-lg);
+  border: 1.5px dashed var(--c-sep-strong);
+  background: var(--c-surface-2);
 }
 
-.space-file-dropzone__surface:hover:not(.space-file-dropzone__surface--disabled),
+.space-file-dropzone__surface:hover,
 .space-file-dropzone__surface--dragging {
-  border-color: rgba(96, 165, 250, 0.8);
-  background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.16), transparent 40%),
-    linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(31, 31, 31, 0.95));
-  transform: translateY(-1px);
+  border-color: var(--c-accent-ring);
+  background: rgba(10, 132, 255, 0.08);
 }
 
 .space-file-dropzone__surface--disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+  @apply cursor-not-allowed opacity-60;
 }
 
 .space-file-dropzone__icon-wrap {
-  display: inline-flex;
-  width: 3.5rem;
-  height: 3.5rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(59, 130, 246, 0.14);
-  color: #93c5fd;
-  font-size: 1.5rem;
+  @apply inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] text-xl;
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
 }
 
 .space-file-dropzone__content {
-  text-align: left;
+  @apply flex flex-col gap-1;
 }
 
 .space-file-dropzone__title {
-  margin: 0;
-  color: #f5f5f5;
-  font-size: 1rem;
-  font-weight: 600;
+  @apply text-[15px] font-semibold;
+  color: var(--c-text);
 }
 
 .space-file-dropzone__description {
-  margin: 0.25rem 0 0;
-  color: #a3a3a3;
-  font-size: 0.875rem;
+  @apply text-sm;
+  color: var(--c-text-3);
 }
 
 .space-file-dropzone__footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  @apply flex flex-wrap items-center justify-between gap-3;
 }
 
 .space-file-dropzone__files {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  @apply m-0 flex min-w-0 flex-1 list-none flex-wrap gap-1.5 p-0;
 }
 
 .space-file-dropzone__file {
-  display: inline-flex;
-  max-width: 100%;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #343434;
-  border-radius: 999px;
-  background: #171717;
-  padding: 0.375rem 0.75rem;
-  color: #d4d4d4;
-  font-size: 0.8rem;
-}
-
-.space-file-dropzone__file span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  @apply inline-flex h-7 max-w-full items-center gap-1.5 truncate rounded-full px-2.5 text-xs;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
 }
 
 .space-file-dropzone__clear {
-  border: 1px solid #393939;
-  border-radius: 999px;
-  background: transparent;
-  color: #d4d4d4;
-  cursor: pointer;
-  padding: 0.45rem 0.9rem;
-  transition:
-    border-color 0.2s ease,
-    color 0.2s ease;
+  @apply h-[30px] cursor-pointer rounded-full border-0 bg-transparent px-3 text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50;
+  color: var(--c-danger);
 }
 
 .space-file-dropzone__clear:hover:not(:disabled) {
-  border-color: #ef4444;
-  color: #fca5a5;
-}
-
-.space-file-dropzone__clear:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-@media (max-width: 640px) {
-  .space-file-dropzone__surface {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .space-file-dropzone__content {
-    text-align: center;
-  }
+  background: var(--c-danger-soft);
 }
 </style>

@@ -9,15 +9,12 @@ const { isOpen, title, subtitle, confirmYes, confirmNo } = useConfirmDialog()
     v-model:open="isOpen"
     :title="title"
     :description="subtitle || 'Please confirm this action.'"
-    :ui="{
-      overlay: 'bg-[#272727ED]',
-      content: 'bg-[#171717] border-none !divide-none !ring-0 !shadow-none'
-    }"
+    :ui="{ content: 'max-w-sm', footer: 'justify-end' }"
   >
     <template #footer>
       <div class="flex w-full justify-end gap-2">
-        <UButton variant="solid" @click="confirmYes">Confirm</UButton>
-        <UButton color="neutral" variant="solid" @click="confirmNo">Cancel</UButton>
+        <button type="button" class="ui-btn ui-btn--ghost" @click="confirmNo">Cancel</button>
+        <button type="button" class="ui-btn ui-btn--primary" @click="confirmYes">Confirm</button>
       </div>
     </template>
   </UModal>

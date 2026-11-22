@@ -1,19 +1,27 @@
 <script setup lang="ts">
 defineProps<{
   title?: string
+  subtitle?: string
 }>()
 </script>
 
 <template>
   <div class="wrapper">
-    <header v-if="title" class="wrapper__header">
-      <h1 class="wrapper__title">{{ title }}</h1>
-      <slot name="header-actions" />
-    </header>
+    <div class="ui-page">
+      <header
+        v-if="title || $slots['header-actions'] || $slots['header-leading']"
+        class="ui-page__header"
+      >
+        <slot name="header-leading" />
+        <div class="wrapper__titles">
+          <h1 class="ui-title">{{ title }}</h1>
+          <p v-if="subtitle" class="ui-subtitle">{{ subtitle }}</p>
+        </div>
+        <slot name="header-actions" />
+      </header>
 
-    <main class="wrapper__content">
       <slot />
-    </main>
+    </div>
   </div>
 </template>
 
@@ -21,18 +29,10 @@ defineProps<{
 @import 'tailwindcss/theme';
 
 .wrapper {
-  @apply box-border flex h-full flex-col overflow-hidden p-6;
+  @apply h-full overflow-y-auto;
 }
 
-.wrapper__header {
-  @apply mb-4 flex items-center justify-between max-lg:mt-12;
-}
-
-.wrapper__title {
-  @apply text-[1.5rem] font-bold text-white;
-}
-
-.wrapper__content {
-  @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
+.wrapper__titles {
+  @apply flex min-w-0 flex-1 flex-col gap-0.5;
 }
 </style>

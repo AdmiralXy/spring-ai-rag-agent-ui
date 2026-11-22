@@ -1,0 +1,145 @@
+/* Shared form styles of the space content providers (Confluence, Git) */
+@reference 'tailwindcss';
+
+.space-provider-panel {
+  @apply flex flex-col gap-3.5;
+}
+
+.space-compact-field {
+  @apply flex w-full items-center gap-3 px-2.5 py-1.5;
+  border-radius: var(--r-lg);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.space-compact-field:focus-within {
+  border-color: var(--c-accent-ring);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.space-compact-icon {
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-lg;
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
+}
+
+.space-compact-icon--git {
+  background: rgba(255, 159, 10, 0.14);
+  color: #ffb340;
+}
+
+.space-compact-input {
+  @apply w-full border-none bg-transparent text-[15px] outline-none;
+  color: var(--c-text);
+}
+
+.space-compact-input::placeholder {
+  color: var(--c-text-4);
+}
+
+.space-auth-card {
+  @apply flex flex-col gap-3.5 p-4;
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  border: 1px solid var(--c-sep);
+}
+
+.space-section-copy {
+  @apply flex flex-col gap-0.5;
+}
+
+.space-section-title {
+  @apply text-sm font-semibold;
+  color: var(--c-text);
+}
+
+.space-section-note,
+.space-status {
+  @apply text-[13px] leading-relaxed;
+  color: var(--c-text-4);
+}
+
+.space-status--error {
+  color: var(--c-danger);
+}
+
+.space-field-grid,
+.space-git-grid {
+  @apply grid grid-cols-2 gap-3 max-md:grid-cols-1;
+}
+
+.space-field {
+  @apply flex flex-col gap-1.5;
+}
+
+.space-field-label {
+  @apply px-1 text-[12px] font-semibold tracking-[0.04em] uppercase;
+  color: var(--c-text-4);
+}
+
+.space-field-input {
+  @apply h-10 w-full px-3.5 text-sm outline-none;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep);
+  color: var(--c-text);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.space-field-input:focus {
+  border-color: var(--c-accent-ring);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.space-field-input::placeholder {
+  color: var(--c-text-4);
+}
+
+.space-select {
+  @apply cursor-pointer appearance-none pr-9;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8e8e93 50%),
+    linear-gradient(135deg, #8e8e93 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 13px) calc(50% - 1px);
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+}
+
+.space-select:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+.space-git-toolbar {
+  @apply flex flex-wrap items-center justify-between gap-3;
+}
+
+.space-folder-field {
+  @apply flex items-end gap-2 max-md:flex-col max-md:items-stretch;
+}
+
+.space-folder-field .space-field {
+  @apply flex-1;
+}
+
+.space-folder-clear {
+  @apply inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full px-3.5 text-[13px] font-medium;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep-strong);
+  color: var(--c-text-2);
+}
+
+.space-folder-clear:hover:not(:disabled) {
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+
+.space-folder-clear:disabled {
+  @apply cursor-not-allowed opacity-50;
+}

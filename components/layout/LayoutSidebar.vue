@@ -1,13 +1,21 @@
 <script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
-import { useRouter } from 'vue-router'
+import { useNewChat } from '~/composables/useNewChat'
 import BuildInfoModal from '~/components/layout/BuildInfoModal.vue'
+import { displayChatTitle } from '~/utils/chat'
 
-const MAX_SELECTED_SPACES = 5
+defineProps<{ closable?: boolean }>()
+const emit = defineEmits<{ navigate: []; close: [] }>()
 
 const { confirm } = useConfirmDialog()
+const { startNewChat } = useNewChat()
 const chatsStore = useChatsStore()
 const spacesStore = useSpacesStore()
+const modelsStore = useModelsStore()
+const route = useRoute()
+const router = useRouter()
 
 await useAsyncData('spaces-sidebar', async () => {
   if (!spacesStore.spaces.length) {
@@ -23,23 +31,95 @@ await useAsyncData('chats', async () => {
   return chatsStore.chats
 })
 
-const router = useRouter()
+await useAsyncData('models-sidebar', async () => {
+  if (!modelsStore.models.length) await modelsStore.fetchModels()
+  return modelsStore.models
+})
 
-const creating = ref(false)
 const isBuildInfoOpen = ref(false)
 const chatsListRef = ref<HTMLElement | null>(null)
-const selectedSpaces = ref<string[]>([])
+const searchRef = ref<HTMLInputElement | null>(null)
+const query = ref(chatsStore.searchQuery)
 
-const selectItems = computed(() =>
-  spacesStore.spaces.map((space) => ({
-    label: space.name,
-    value: space.id,
-    disabled:
-      selectedSpaces.value.length >= MAX_SELECTED_SPACES && !selectedSpaces.value.includes(space.id)
-  }))
-)
+const navItems = [
+  {
+    to: '/',
+    label: 'Chats',
+    icon: 'lucide:message-circle',
+    match: (p: string) => p === '/' || p.startsWith('/chats')
+  },
+  {
+    to: '/spaces',
+    label: 'Spaces',
+    icon: 'lucide:layers',
+    match: (p: string) => p.startsWith('/spaces')
+  },
+  {
+    to: '/files',
+    label: 'Files',
+    icon: 'lucide:folder',
+    match: (p: string) => p.startsWith('/files')
+  },
+  {
+    to: '/prompts',
+    label: 'Prompts',
+    icon: 'lucide:file-text',
+    match: (p: string) => p.startsWith('/prompts')
+  }
+]
+
+const activeChatId = computed(() => route.params.id as string | undefined)
+const isSearching = computed(() => chatsStore.searchResults !== null)
+
+function isAgentChat(chat: Chat) {
+  const id = chat.modelId || chat.modelName
+  return id ? modelsStore.getByValue(id)?.provider === 'AGENT' : false
+}
+
+const DAY = 24 * 60 * 60 * 1000
+
+function startOfToday() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+}
+
+const groups = computed(() => {
+  const source = chatsStore.searchResults ?? chatsStore.chats
+  if (isSearching.value) {
+    return [{ label: source.length ? 'Results' : '', chats: source }]
+  }
+
+  const today = startOfToday()
+  const buckets: Array<{ label: string; from: number; chats: Chat[] }> = [
+    { label: 'Today', from: today, chats: [] },
+    { label: 'Yesterday', from: today - DAY, chats: [] },
+    { label: 'Previous 7 days', from: today - 7 * DAY, chats: [] },
+    { label: 'Previous 30 days', from: today - 30 * DAY, chats: [] },
+    { label: 'Older', from: Number.NEGATIVE_INFINITY, chats: [] }
+  ]
+
+  for (const chat of source) {
+    const time = Date.parse(chat.updatedAt ?? chat.createdAt ?? '')
+    const stamp = Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
+    const bucket = buckets.find((b) => stamp >= b.from) ?? buckets[buckets.length - 1]!
+    bucket.chats.push(chat)
+  }
+  return buckets.filter((b) => b.chats.length)
+})
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(query, (value) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => chatsStore.searchChats(value), 250)
+})
+
+function clearSearch() {
+  query.value = ''
+  void chatsStore.searchChats('')
+}
 
 async function loadMoreChats() {
+  if (isSearching.value) return
   if (chatsStore.chatsLoading || chatsStore.chatsLoadingMore || !chatsStore.hasMoreChats) return
   await chatsStore.loadNextChatsPage()
 }
@@ -47,64 +127,32 @@ async function loadMoreChats() {
 function onChatsScroll() {
   const container = chatsListRef.value
   if (!container) return
-
   const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight
-  if (distanceToBottom <= 80) {
-    void loadMoreChats()
-  }
+  if (distanceToBottom <= 80) void loadMoreChats()
 }
 
-async function onCreateChatClick() {
-  if (!creating.value) {
-    creating.value = true
-    await nextTick()
-    return
-  }
-
-  await chatsStore.createChat({ ragSpaces: [...selectedSpaces.value] })
-  creating.value = false
-  selectedSpaces.value = []
-}
-
-const onRemoveChatClick = async (e: Event, id: string) => {
-  e.stopPropagation()
-  const ok = await confirm(
-    'Remove chat',
-    'This action cannot be undone. Are you sure you want to proceed?'
-  )
-  if (ok) {
-    await chatsStore.deleteChat(id)
-    if (chatsStore.activeChatId === id) {
-      chatsStore.activeChatId = null
-      await router.push('/')
-    }
-  }
-}
-
-const emit = defineEmits(['navigate'])
-
-function openChat(id: string) {
-  creating.value = false
-  selectedSpaces.value = []
-  router.push({ name: 'chats-id', params: { id } })
+async function onNewChat() {
+  await startNewChat()
   emit('navigate')
 }
 
-function navigate() {
-  creating.value = false
-  selectedSpaces.value = []
-  emit('navigate')
+async function removeChat(id: string) {
+  const ok = await confirm('Delete chat?', 'The chat and its agent workspace will be deleted.')
+  if (!ok) return
+  await chatsStore.deleteChat(id)
+  if (activeChatId.value === id) {
+    chatsStore.activeChatId = null
+    await router.push('/')
+  }
 }
 
-watch(
-  selectedSpaces,
-  (value) => {
-    if (value.length > MAX_SELECTED_SPACES) {
-      selectedSpaces.value = value.slice(0, MAX_SELECTED_SPACES)
-    }
-  },
-  { deep: true }
-)
+function onKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    searchRef.value?.focus()
+    searchRef.value?.select()
+  }
+}
 
 watch(
   () => chatsStore.chats.length,
@@ -115,168 +163,326 @@ watch(
 )
 
 onMounted(async () => {
+  window.addEventListener('keydown', onKeydown)
   await nextTick()
   onChatsScroll()
 })
+
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <div class="sidebar">
-    <div class="sidebar__header">
+  <nav class="sb" aria-label="Sidebar">
+    <div class="sb__brand">
+      <NuxtLink to="/" class="sb__logo" aria-label="Home" @click="emit('navigate')">
+        <span class="sb__logo-mark"><Icon name="lucide:sparkle" /></span>
+        <span class="sb__logo-text">Agent</span>
+      </NuxtLink>
       <button
-        class="sidebar__header__github"
-        title="About this build"
-        aria-label="Open GitHub build info"
-        @click="isBuildInfoOpen = true"
-      >
-        <Icon name="mdi:github" class="sidebar__header__github-icon" />
-      </button>
-
-      <NuxtLink href="/spaces" class="sidebar__header__button" @click="navigate">
-        <Icon name="material-symbols-light:file-copy" />
-        Spaces
-      </NuxtLink>
-
-      <NuxtLink href="/files" class="sidebar__header__button" @click="navigate">
-        <Icon name="material-symbols:folder-outline-rounded" />
-        Files
-      </NuxtLink>
-
-      <NuxtLink href="/prompts" class="sidebar__header__button" @click="navigate">
-        <Icon name="material-symbols:description-outline-rounded" />
-        Prompts
-      </NuxtLink>
-
-      <NuxtLink href="/settings/models" class="sidebar__header__button" @click="navigate">
-        <Icon name="material-symbols:settings-outline" />
-        Settings
-      </NuxtLink>
-
-      <button
-        class="sidebar__header__button"
+        type="button"
+        class="ui-icon-btn"
+        aria-label="New chat"
+        title="New chat"
         :disabled="chatsStore.loading"
-        @click="onCreateChatClick"
+        @click="onNewChat"
       >
-        <Icon name="material-symbols:add" />
-        {{ creating ? 'Confirm' : 'Create chat' }}
+        <Icon name="lucide:square-pen" />
       </button>
-
-      <div v-show="creating" class="sidebar__header__select">
-        <USelectMenu
-          v-model="selectedSpaces"
-          :items="selectItems"
-          label-key="label"
-          value-key="value"
-          multiple
-          placeholder="Select up to 5 spaces"
-          class="w-full"
-          :ui="{
-            base: 'bg-[#181818] text-white border border-[#474747]',
-            content: 'bg-[#474747] text-white',
-            item: 'bg-[#272727] border border-[#474747]',
-            input: 'bg-[#474747] text-white',
-            leading: 'text-white',
-            trailing: 'text-white',
-            group: 'bg-[#474747] text-white',
-            placeholder: 'text-white',
-            value: 'text-white'
-          }"
-        />
-      </div>
-
-      <BuildInfoModal v-model:open="isBuildInfoOpen" />
+      <button
+        v-if="closable"
+        type="button"
+        class="ui-icon-btn"
+        aria-label="Close sidebar"
+        title="Close sidebar"
+        @click="emit('close')"
+      >
+        <Icon name="lucide:panel-left-close" />
+      </button>
     </div>
 
-    <p class="sidebar__list-name">Chats</p>
-    <ul ref="chatsListRef" class="sidebar__list" @scroll.passive="onChatsScroll">
-      <li
-        v-for="c in chatsStore.chats"
-        :key="c.id"
-        class="sidebar__item"
-        :class="{ 'sidebar__item--active': c.id == $router.currentRoute.value.params.id }"
-        @click="openChat(c.id)"
+    <label class="sb__search">
+      <Icon name="lucide:search" class="sb__search-icon" />
+      <input
+        ref="searchRef"
+        v-model="query"
+        type="search"
+        placeholder="Search chats"
+        aria-label="Search chats"
+        @keydown.esc="clearSearch"
+      />
+      <button
+        v-if="query"
+        type="button"
+        class="sb__search-clear"
+        aria-label="Clear search"
+        @click="clearSearch"
       >
-        <span>{{ c.title }}</span>
-        <button class="sidebar__delete" @click="onRemoveChatClick($event, c.id)">
-          <Icon name="material-symbols:delete-outline" />
-        </button>
-      </li>
-      <li v-if="chatsStore.chatsLoadingMore" class="sidebar__status">Loading more chats...</li>
-      <li v-else-if="!chatsStore.hasMoreChats && chatsStore.chats.length" class="sidebar__status">
-        No more chats
-      </li>
-    </ul>
-  </div>
+        <Icon name="lucide:x" />
+      </button>
+      <kbd v-else class="sb__kbd">⌘K</kbd>
+    </label>
+
+    <div class="sb__nav">
+      <NuxtLink
+        v-for="item in navItems"
+        :key="item.to"
+        :to="item.to"
+        class="sb__nav-item"
+        :class="{ 'sb__nav-item--active': item.match(route.path) }"
+        @click="emit('navigate')"
+      >
+        <Icon :name="item.icon" class="sb__nav-icon" />
+        {{ item.label }}
+      </NuxtLink>
+    </div>
+
+    <div ref="chatsListRef" class="sb__chats" @scroll.passive="onChatsScroll">
+      <template v-for="group in groups" :key="group.label">
+        <div v-if="group.label" class="sb__group">{{ group.label }}</div>
+        <div
+          v-for="chat in group.chats"
+          :key="chat.id"
+          class="sb__chat"
+          :class="{ 'sb__chat--active': chat.id === activeChatId }"
+        >
+          <NuxtLink
+            :to="{ name: 'chats-id', params: { id: chat.id } }"
+            class="sb__chat-link"
+            :aria-current="chat.id === activeChatId ? 'page' : undefined"
+            @click="emit('navigate')"
+          >
+            <span class="sb__chat-title">{{ displayChatTitle(chat.title) }}</span>
+            <Icon
+              v-if="isAgentChat(chat)"
+              name="lucide:terminal"
+              class="sb__chat-agent"
+              aria-label="Agent chat"
+            />
+          </NuxtLink>
+          <button
+            type="button"
+            class="sb__chat-delete"
+            aria-label="Delete chat"
+            title="Delete chat"
+            @click="removeChat(chat.id)"
+          >
+            <Icon name="lucide:trash-2" />
+          </button>
+        </div>
+      </template>
+
+      <p v-if="isSearching && !chatsStore.searchResults?.length" class="sb__status">
+        {{ chatsStore.searchLoading ? 'Searching…' : 'No chats found' }}
+      </p>
+      <p v-else-if="!isSearching && chatsStore.chatsLoadingMore" class="sb__status">Loading…</p>
+      <p
+        v-else-if="!isSearching && chatsStore.chatsInitialized && !chatsStore.chats.length"
+        class="sb__status"
+      >
+        No chats yet
+      </p>
+    </div>
+
+    <div class="sb__footer">
+      <NuxtLink
+        to="/settings/models"
+        class="sb__nav-item sb__nav-item--footer"
+        :class="{ 'sb__nav-item--active': route.path.startsWith('/settings') }"
+        @click="emit('navigate')"
+      >
+        <Icon name="lucide:settings" class="sb__nav-icon" />
+        Settings
+      </NuxtLink>
+      <button
+        type="button"
+        class="ui-icon-btn"
+        aria-label="About this build"
+        title="About this build"
+        @click="isBuildInfoOpen = true"
+      >
+        <Icon name="lucide:info" />
+      </button>
+    </div>
+
+    <BuildInfoModal v-model:open="isBuildInfoOpen" />
+  </nav>
 </template>
 
 <style scoped>
 @import 'tailwindcss/theme';
 
-.sidebar {
-  @apply flex h-full flex-col bg-[#181818] max-lg:mt-[3.5rem];
+.sb {
+  @apply flex h-full flex-col gap-3.5 px-2.5 pt-3.5 pb-3;
+  background: var(--c-sidebar);
+  border-right: 1px solid var(--c-sep);
 }
 
-.sidebar__header {
-  @apply mt-2 flex min-h-[7vh] flex-col p-2;
+.sb__brand {
+  @apply flex items-center gap-2 px-1.5 py-0.5;
 }
 
-.sidebar__header__github {
-  @apply mb-2 flex h-9 w-9 cursor-pointer items-center justify-center self-start rounded-full border border-[#343434] bg-[#1f1f1f] text-white transition-colors duration-200;
+.sb__logo {
+  @apply flex flex-1 items-center gap-2.5;
+  color: var(--c-text);
 }
 
-.sidebar__header__github:hover {
-  @apply border-[#4a4a4a] bg-[#2a2a2a];
+.sb__logo-mark {
+  @apply flex h-[30px] w-[30px] items-center justify-center rounded-[9px] text-[15px];
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep-strong);
+  color: var(--c-accent);
 }
 
-.sidebar__header__github-icon {
-  @apply h-full w-full p-1;
+.sb__logo-text {
+  @apply text-[15px] font-semibold tracking-[-0.01em];
 }
 
-.sidebar__header__button {
-  @apply mb-1 flex items-center gap-2 rounded-md p-2 text-white transition-colors duration-200 disabled:opacity-50;
+.sb__search {
+  @apply flex h-[34px] items-center gap-2 px-2.5;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text-4);
 }
 
-.sidebar__header__button:last-child {
-  @apply mb-0;
+.sb__search:focus-within {
+  box-shadow: 0 0 0 2px var(--c-accent-ring);
 }
 
-.sidebar__header__button:hover {
-  @apply bg-white/10;
+.sb__search-icon {
+  @apply flex-none text-[15px];
 }
 
-.sidebar__header__select {
-  @apply mt-1;
+.sb__search input {
+  @apply min-w-0 flex-1 border-0 bg-transparent text-[13.5px] outline-none;
+  color: var(--c-text);
 }
 
-.sidebar__list-name {
-  @apply mt-2 ml-4 text-[0.9rem] font-bold text-gray-400;
+.sb__search input::placeholder {
+  color: var(--c-text-4);
 }
 
-.sidebar__list {
-  @apply flex-1 list-none overflow-y-auto p-2;
+.sb__search input::-webkit-search-cancel-button {
+  display: none;
 }
 
-.sidebar__item {
-  @apply flex cursor-pointer items-center justify-between rounded-md p-3 text-sm text-white transition-colors duration-200;
+.sb__search-clear {
+  @apply flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-0 text-[11px];
+  background: var(--c-surface-4);
+  color: var(--c-text);
 }
 
-.sidebar__item:hover {
-  @apply bg-white/10;
+.sb__kbd {
+  @apply rounded-[5px] px-1.5 font-sans text-[11px] max-lg:hidden;
+  border: 1px solid var(--c-sep-strong);
+  color: var(--c-text-4);
 }
 
-.sidebar__item--active {
-  @apply bg-[#2a2a2a] text-white;
+.sb__nav {
+  @apply flex flex-col gap-0.5;
 }
 
-.sidebar__delete {
-  @apply cursor-pointer border-none bg-transparent p-1 text-[1.1rem] text-gray-400 transition-colors duration-200;
+.sb__nav-item {
+  @apply flex h-[34px] flex-none items-center gap-2.5 rounded-[9px] px-2.5 text-[13.5px] transition-colors;
+  color: var(--c-text-2);
 }
 
-.sidebar__delete:hover {
-  @apply text-red-500;
+.sb__nav-item:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
 }
 
-.sidebar__status {
-  @apply p-3 text-center text-xs text-gray-500;
+.sb__nav-icon {
+  @apply flex-none text-[17px];
+  color: var(--c-text-3);
+}
+
+.sb__nav-item--active {
+  @apply font-medium;
+  background: var(--c-selected);
+  color: var(--c-text);
+}
+
+.sb__nav-item--active .sb__nav-icon {
+  color: var(--c-accent);
+}
+
+.sb__chats {
+  @apply -mx-1 flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-1;
+}
+
+.sb__group {
+  @apply px-2.5 pt-3 pb-1 text-[11px] font-semibold tracking-[0.04em] uppercase first:pt-1;
+  color: var(--c-text-4);
+}
+
+.sb__chat {
+  @apply relative flex items-center rounded-[9px] transition-colors;
+}
+
+.sb__chat:hover {
+  background: var(--c-hover);
+}
+
+.sb__chat--active,
+.sb__chat--active:hover {
+  background: var(--c-accent-soft);
+}
+
+.sb__chat-link {
+  @apply flex h-[34px] min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent px-2.5 text-left text-[13.5px];
+  color: var(--c-text-2);
+}
+
+.sb__chat--active .sb__chat-link {
+  @apply font-medium;
+  color: var(--c-text);
+}
+
+.sb__chat-title {
+  @apply min-w-0 flex-1 truncate;
+}
+
+.sb__chat-agent {
+  @apply flex-none text-[13px];
+  color: var(--c-text-4);
+}
+
+.sb__chat-delete {
+  @apply mr-1 hidden h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-sm;
+  color: var(--c-text-3);
+}
+
+.sb__chat:hover .sb__chat-delete,
+.sb__chat-delete:focus-visible {
+  @apply flex;
+}
+
+.sb__chat:hover .sb__chat-agent {
+  @apply hidden;
+}
+
+.sb__chat-delete:hover {
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+}
+
+@media (hover: none) {
+  .sb__chat-delete {
+    @apply flex;
+  }
+}
+
+.sb__status {
+  @apply px-2.5 py-3 text-center text-xs;
+  color: var(--c-text-4);
+}
+
+.sb__footer {
+  @apply flex items-center gap-1 pt-2;
+  border-top: 1px solid var(--c-sep);
+}
+
+.sb__nav-item--footer {
+  @apply flex-1;
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
+import { useIntersectionObserver } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import useNotification from '~/composables/useNotification'
@@ -16,7 +17,6 @@ import SpaceTextProvider from '~/components/spaces/providers/SpaceTextProvider.v
 type PersistedAuthStorageKey = 'confluence' | 'git'
 
 const route = useRoute()
-const router = useRouter()
 const { confirm } = useConfirmDialog()
 const { notify } = useNotification()
 const config = useRuntimeConfig()
@@ -31,13 +31,13 @@ const AUTH_STORAGE_KEYS: Record<PersistedAuthStorageKey, string> = {
 }
 
 const providerOptions: ProviderOption[] = [
-  { value: 'text', label: 'Content', icon: 'material-symbols:text-snippet-outline-rounded' },
-  { value: 'files', label: 'Files', icon: 'material-symbols:upload-file-outline-rounded' },
+  { value: 'text', label: 'Content', icon: 'lucide:text' },
+  { value: 'files', label: 'Files', icon: 'lucide:upload' },
   { value: 'confluence', label: 'Confluence', icon: 'simple-icons:confluence' },
-  { value: 'git', label: 'Git', icon: 'mdi:git' }
+  { value: 'git', label: 'Git', icon: 'simple-icons:git' }
 ]
 
-const palette = ['#34d399', '#60a5fa', '#f472b6', '#facc15', '#fb923c', '#a78bfa', '#4ade80']
+const palette = ['#30d158', '#409cff', '#ff6482', '#ffd60a', '#ff9f0a', '#bf5af2', '#64d2ff']
 
 const spaceId = route.params.id as string
 const space = computed(() => spacesStore.getById(spaceId))
@@ -66,6 +66,7 @@ const progress = ref(0)
 const creating = ref(false)
 const docColors = ref<Record<string, { label: string; color: string }>>({})
 const scrollContainerRef = ref<HTMLElement | null>(null)
+const loadMoreRef = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
 const activeSearchQuery = ref('')
 const searchResults = ref<RagDocument[]>([])
@@ -150,6 +151,13 @@ await useAsyncData(`documents-${spaceId}`, async () => {
   return ragStore.getDocsBySpace(spaceId)
 })
 
+// The page itself scrolls: load the next page when the end of the list comes into view.
+useIntersectionObserver(loadMoreRef, ([entry]) => {
+  if (!entry?.isIntersecting || isSearchMode.value) return
+  if (documentsLoading.value || documentsLoadingMore.value || !documentsHasMore.value) return
+  void ragStore.loadMoreDocuments(spaceId)
+})
+
 async function onDocumentsScroll() {
   if (isSearchMode.value) return
 
@@ -190,11 +198,6 @@ function clearSearch() {
   activeSearchQuery.value = ''
   searchResults.value = []
   void nextTick().then(() => onDocumentsScroll())
-}
-
-function goBack() {
-  creating.value = false
-  router.push({ name: 'spaces' })
 }
 
 function toggleCreate() {
@@ -562,25 +565,26 @@ watch(
 </script>
 
 <template>
-  <LayoutWrapper :title="space?.name">
+  <LayoutWrapper :title="space?.name" subtitle="Space">
+    <template #header-leading>
+      <NuxtLink to="/spaces" class="space__back" aria-label="Back to spaces">
+        <Icon name="lucide:chevron-left" />
+        Spaces
+      </NuxtLink>
+    </template>
     <template #header-actions>
-      <div class="flex items-center gap-2">
-        <UButton
-          variant="ghost"
-          color="neutral"
-          size="sm"
-          icon="material-symbols:arrow-back"
-          class="space__back"
-          @click="goBack"
-        />
-        <UButton color="primary" variant="solid" size="sm" @click="toggleCreate">
-          <Icon :name="creating ? 'material-symbols:close' : 'material-symbols:add'" class="mr-1" />
-          {{ creating ? 'Cancel' : 'Add' }}
-        </UButton>
-      </div>
+      <button
+        type="button"
+        class="ui-btn"
+        :class="creating ? 'ui-btn--secondary' : 'ui-btn--primary'"
+        @click="toggleCreate"
+      >
+        <Icon :name="creating ? 'lucide:x' : 'lucide:plus'" />
+        {{ creating ? 'Cancel' : 'Add content' }}
+      </button>
     </template>
 
-    <div v-show="creating" class="space__create">
+    <section v-show="creating" class="ui-card space__create" aria-label="Add content">
       <SpaceProviderSelector
         v-model="provider"
         :items="availableProviderOptions"
@@ -632,206 +636,157 @@ watch(
 
       <SpaceFilesProvider v-else v-model="files" :disabled="uploading" />
 
+      <div v-show="uploading" class="space__progress">
+        <div class="space__progress-track">
+          <div class="space__progress-bar" :style="{ width: `${progress}%` }" />
+        </div>
+        <span class="space__progress-text">{{ progress }}%</span>
+      </div>
+
       <div class="space__create-actions">
-        <UButton
-          color="primary"
-          variant="solid"
-          size="md"
-          class="space__create__btn"
-          icon="i-lucide-rocket"
-          :loading="uploading || loading"
+        <label v-if="!uploading" class="space__batching">
+          <button
+            type="button"
+            role="switch"
+            class="ui-switch"
+            aria-label="Batch embeddings"
+            :aria-checked="batch"
+            @click="batch = !batch"
+          ></button>
+          <span>Batch embeddings</span>
+        </label>
+        <div class="flex-1"></div>
+        <button
+          type="button"
+          class="ui-btn ui-btn--primary ui-btn--lg"
           :disabled="!canUpload"
           @click="addContent"
         >
-          {{ uploading ? 'Uploading...' : 'Upload' }}
-        </UButton>
-        <UCheckbox
-          v-if="!uploading"
-          v-model="batch"
-          label="Enable batching"
-          class="space__batching"
+          <Icon v-if="uploading || loading" name="lucide:loader-circle" class="animate-spin" />
+          <Icon v-else name="lucide:upload" />
+          {{ uploading ? 'Uploading…' : 'Add to space' }}
+        </button>
+      </div>
+    </section>
+
+    <section class="space__search" aria-label="Semantic search">
+      <form class="space__search-bar" role="search" @submit.prevent="runSearch">
+        <Icon name="lucide:search" class="space__search-icon" />
+        <label for="space-search" class="ui-sr-only">Search this space</label>
+        <input
+          id="space-search"
+          v-model="searchQuery"
+          type="search"
+          class="space__search-input"
+          placeholder="Search by meaning, topic or phrase"
         />
-      </div>
-    </div>
-
-    <div v-show="uploading" class="space__progress">
-      <UProgress v-model="progress" :max="100" color="primary" size="md" />
-      <p class="space__progress-text">{{ progress }}%</p>
-    </div>
-
-    <div class="space__explorer">
-      <div class="space__search-card">
-        <div class="space__search-heading">
-          <div>
-            <p class="space__search-eyebrow">Semantic Search</p>
-            <h3 class="space__search-title">Find relevant chunks inside this space</h3>
-          </div>
-          <div class="space__stats">
-            <span class="space__stat-chip">Loaded: {{ loadedDocumentsCount }}</span>
-            <span v-if="!isSearchMode" class="space__stat-chip">
-              {{ documentsHasMore ? 'More documents available' : 'All loaded' }}
-            </span>
-            <span v-else class="space__stat-chip space__stat-chip--accent">
-              Results: {{ searchResults.length }}
-            </span>
-          </div>
-        </div>
-
-        <div class="space__search-controls">
-          <UInput
-            v-model="searchQuery"
-            icon="material-symbols:search-rounded"
-            placeholder="Search by meaning, topic or phrase"
-            size="lg"
-            class="space__search-input"
-            :ui="{
-              base: 'bg-[#181818] text-white border border-[#3b3b3b]',
-              leadingIcon: 'text-gray-400'
-            }"
-            @keydown.enter.prevent="runSearch"
-          />
-
-          <USelectMenu
-            v-model="searchDepth"
-            :items="searchDepthOptions"
-            label-key="label"
-            value-key="value"
-            class="space__search-select"
-            :search-input="false"
-            :ui="{
-              base: 'bg-[#181818] text-white border border-[#3b3b3b]',
-              content: 'bg-[#232323] text-white',
-              item: 'bg-[#232323] border border-[#363636]',
-              placeholder: 'text-gray-400',
-              value: 'text-white'
-            }"
-          />
-
-          <UButton
-            color="primary"
-            variant="solid"
-            size="lg"
-            icon="material-symbols:travel-explore-rounded"
-            :loading="searchLoading"
-            :disabled="!searchQuery.trim()"
-            @click="runSearch"
-          >
-            Search
-          </UButton>
-
-          <UButton
-            v-if="isSearchMode"
-            color="neutral"
-            variant="soft"
-            size="lg"
-            icon="material-symbols:close-rounded"
-            @click="clearSearch"
-          >
-            Clear
-          </UButton>
-        </div>
-
-        <p class="space__search-hint">
-          <template v-if="isSearchMode">
-            Query: "{{ activeSearchQuery }}". Showing the top {{ searchDepth }} semantic matches.
-          </template>
-        </p>
-      </div>
-    </div>
-
-    <div
-      ref="scrollContainerRef"
-      class="space__scroll-container"
-      @scroll.passive="onDocumentsScroll"
-    >
-      <ul v-if="documentsLoading && !loadedDocumentsCount && !isSearchMode" class="space__list">
-        <li v-for="n in 3" :key="n" class="space__item">
-          <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
-          <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
-        </li>
-      </ul>
-
-      <ul v-else-if="searchLoading && isSearchMode && !searchResults.length" class="space__list">
-        <li v-for="n in 3" :key="n" class="space__item space__item--search">
-          <USkeleton class="h-5 w-56 animate-pulse rounded bg-gray-700/50" />
-          <USkeleton class="mt-8 h-18 w-full animate-pulse rounded bg-gray-700/50" />
-        </li>
-      </ul>
-
-      <div v-else-if="!visibleDocuments.length" class="space__empty-state">
-        <Icon
-          :name="
-            isSearchMode
-              ? 'material-symbols:travel-explore-outline-rounded'
-              : 'material-symbols:article-outline-rounded'
-          "
-          class="space__empty-icon"
-        />
-        <p class="space__empty-title">
-          {{
-            isSearchMode ? 'No matching chunks found' : 'This space does not contain documents yet'
-          }}
-        </p>
-        <p class="space__empty-text">
-          {{
-            isSearchMode
-              ? 'Try a broader query or increase the number of returned matches.'
-              : 'Add content above to start building the knowledge base for this space.'
-          }}
-        </p>
-      </div>
-
-      <ul v-else class="space__list">
-        <li
-          v-for="doc in visibleDocuments"
-          :key="doc.id"
-          class="space__item"
-          :class="{ 'space__item--search': isSearchMode }"
+        <label for="space-depth" class="ui-sr-only">Number of results</label>
+        <select id="space-depth" v-model.number="searchDepth" class="space__depth">
+          <option v-for="option in searchDepthOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+        <button
+          v-if="isSearchMode"
+          type="button"
+          class="ui-icon-btn"
+          aria-label="Clear search"
+          @click="clearSearch"
         >
-          <div class="space__doc-label">
-            <span
-              class="space__label"
-              :style="{ backgroundColor: getDocStyle(doc.metadata).color }"
-            >
+          <Icon name="lucide:x" />
+        </button>
+        <button
+          type="submit"
+          class="ui-btn ui-btn--primary ui-btn--sm"
+          :disabled="!searchQuery.trim() || searchLoading"
+        >
+          <Icon v-if="searchLoading" name="lucide:loader-circle" class="animate-spin" />
+          Search
+        </button>
+      </form>
+      <p class="ui-hint">
+        <template v-if="isSearchMode">
+          {{ searchResults.length }} closest chunks for “{{ activeSearchQuery }}”
+        </template>
+        <template v-else-if="loadedDocumentsCount">
+          {{ loadedDocumentsCount }} chunks loaded{{ documentsHasMore ? ', scroll for more' : '' }}
+        </template>
+      </p>
+    </section>
+
+    <div ref="scrollContainerRef" class="space__scroll" @scroll.passive="onDocumentsScroll">
+      <div
+        v-if="
+          (documentsLoading && !loadedDocumentsCount && !isSearchMode) ||
+          (searchLoading && isSearchMode && !searchResults.length)
+        "
+        class="space__list"
+      >
+        <div v-for="n in 3" :key="n" class="ui-card space__chunk">
+          <USkeleton class="h-4 w-48 rounded" />
+          <USkeleton class="h-14 w-full rounded" />
+        </div>
+      </div>
+
+      <div v-else-if="!visibleDocuments.length" class="ui-empty">
+        <Icon
+          :name="isSearchMode ? 'lucide:search-x' : 'lucide:file-text'"
+          class="ui-empty__icon"
+        />
+        <p class="ui-empty__title">
+          {{ isSearchMode ? 'Nothing matched' : 'This space is empty' }}
+        </p>
+        <p class="text-sm">
+          {{
+            isSearchMode
+              ? 'Try a broader query or return more results.'
+              : 'Add text, files, Confluence pages or a Git repository to build the knowledge base.'
+          }}
+        </p>
+      </div>
+
+      <div v-else class="space__list">
+        <article v-for="doc in visibleDocuments" :key="doc.id" class="ui-card space__chunk">
+          <div class="space__chunk-head">
+            <span class="space__label" :style="{ '--doc-color': getDocStyle(doc.metadata).color }">
               {{ getDocStyle(doc.metadata).label }}
             </span>
-            <span v-if="isSearchMode" class="space__match-chip">Match</span>
+            <span class="space__source" :title="doc.metadata.doc">{{ doc.metadata.doc }}</span>
             <span
               v-if="isSearchMode && doc.metadata.distance !== undefined"
-              class="space__distance-chip"
+              class="ui-chip ui-chip--accent"
+              title="Cosine distance, lower is closer"
             >
               {{ doc.metadata.distance.toFixed(3) }}
             </span>
             <button
-              class="space__delete-all"
-              title="Delete all chunks"
-              @click="deleteDocument(doc.metadata.doc)"
-            >
-              <Icon name="material-symbols:delete-forever-outline" />
-            </button>
-          </div>
-
-          <p class="space__doc-source">{{ doc.metadata.doc }}</p>
-          <span class="space__content">{{ doc.content }}</span>
-
-          <div class="space__actions">
-            <button
-              class="space__delete"
-              title="Delete chunk"
+              type="button"
+              class="ui-icon-btn ui-icon-btn--danger"
+              title="Delete this chunk"
+              aria-label="Delete this chunk"
               @click="deleteText(doc.metadata.doc, doc.metadata.chunk)"
             >
-              <Icon name="material-symbols:delete-outline" />
+              <Icon name="lucide:trash-2" />
+            </button>
+            <button
+              type="button"
+              class="ui-icon-btn ui-icon-btn--danger"
+              title="Delete the whole document"
+              aria-label="Delete the whole document"
+              @click="deleteDocument(doc.metadata.doc)"
+            >
+              <Icon name="lucide:file-x" />
             </button>
           </div>
-        </li>
+          <p class="space__content">{{ doc.content }}</p>
+        </article>
 
-        <li v-if="documentsLoadingMore && !isSearchMode" class="space__list-status">
-          Loading more documents...
-        </li>
-        <li v-else-if="!documentsHasMore && !isSearchMode" class="space__list-status">
-          All available documents are loaded
-        </li>
-      </ul>
+        <div ref="loadMoreRef" aria-hidden="true"></div>
+        <p v-if="documentsLoadingMore && !isSearchMode" class="space__status">Loading more…</p>
+        <p v-else-if="!documentsHasMore && !isSearchMode" class="space__status">
+          All chunks are loaded
+        </p>
+      </div>
     </div>
   </LayoutWrapper>
 </template>
@@ -839,160 +794,123 @@ watch(
 <style scoped>
 @import 'tailwindcss/theme';
 
-.space__explorer {
-  @apply mt-4;
+.space__back {
+  @apply -ml-1 flex w-full items-center gap-0.5 text-sm;
+  color: var(--c-accent);
 }
 
-.space__search-card {
-  @apply rounded-2xl border border-[#303030] bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.12),_transparent_32%),linear-gradient(135deg,_#1b1b1b,_#232323)] p-4 shadow-lg;
-}
-
-.space__search-heading {
-  @apply flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between;
-}
-
-.space__search-eyebrow {
-  @apply text-[0.7rem] font-semibold tracking-[0.22em] text-cyan-300/80 uppercase;
-}
-
-.space__search-title {
-  @apply mt-1 text-lg font-semibold text-white;
-}
-
-.space__stats {
-  @apply flex flex-wrap gap-2;
-}
-
-.space__stat-chip {
-  @apply rounded-full border border-[#3b3b3b] bg-black/20 px-3 py-1 text-xs text-gray-300;
-}
-
-.space__stat-chip--accent {
-  @apply border-cyan-500/40 text-cyan-200;
-}
-
-.space__search-controls {
-  @apply mt-4 flex flex-col gap-3 xl:flex-row xl:items-center;
-}
-
-.space__search-input {
-  @apply min-w-0 flex-1;
-}
-
-.space__search-select {
-  @apply w-full xl:w-[9rem];
-}
-
-.space__search-hint {
-  @apply mt-3 text-sm leading-relaxed text-gray-400;
-}
-
-.space__scroll-container {
-  @apply mt-4 flex-1 overflow-x-hidden overflow-y-auto;
-  max-height: calc(100vh - 280px);
-  padding-right: 0.25rem;
-  scroll-behavior: smooth;
-}
-
-.space__list {
-  @apply flex max-w-full flex-col gap-2;
-  overflow-x: hidden;
-}
-
-.space__item {
-  @apply relative flex max-w-full flex-col overflow-hidden rounded-md bg-[#1e1e1e] p-4 transition-colors duration-200;
-  box-sizing: border-box;
-}
-
-.space__item--search {
-  @apply border border-cyan-500/15 bg-[linear-gradient(135deg,_rgba(8,145,178,0.08),_rgba(30,30,30,1)_35%)] shadow-[0_0_0_1px_rgba(6,182,212,0.06)];
-}
-
-.space__item:hover {
-  @apply bg-[#2a2a2a];
-}
-
-.space__doc-source {
-  @apply max-w-[calc(100%-8rem)] truncate text-xs text-gray-500;
-}
-
-.space__content {
-  @apply mt-4 flex-1 pr-8 text-sm leading-snug break-words whitespace-pre-wrap text-white;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  max-width: 100%;
-}
-
-.space__doc-label {
-  @apply absolute top-2 right-2 flex items-center gap-1;
-}
-
-.space__label {
-  @apply rounded px-2 py-1 text-xs font-bold text-black;
-}
-
-.space__match-chip {
-  @apply rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[0.65rem] font-semibold tracking-[0.16em] text-cyan-200 uppercase;
-}
-
-.space__distance-chip {
-  @apply rounded-full border border-[#474747] bg-[#111] px-2 py-1 text-[0.7rem] font-medium text-gray-300;
-}
-
-.space__actions {
-  @apply mt-2 flex justify-end;
-}
-
-.space__delete,
-.space__delete-all {
-  @apply cursor-pointer border-none bg-transparent p-1 text-xl text-gray-400 transition-colors duration-200;
-}
-
-.space__delete:hover {
-  @apply text-red-500;
-}
-
-.space__delete-all:hover {
-  @apply text-amber-500;
+.space__back:hover {
+  color: var(--c-accent-hover);
 }
 
 .space__create {
-  @apply mb-5 flex flex-col gap-3 rounded-xl border border-[#333] bg-gradient-to-br from-[#1f1f1f] to-[#262626] p-5 shadow-md;
+  @apply flex flex-col gap-4 p-4;
 }
 
 .space__create-actions {
-  @apply flex flex-wrap items-center justify-between gap-2;
+  @apply flex flex-wrap items-center gap-3;
 }
 
 .space__batching {
-  @apply text-sm text-gray-400;
+  @apply flex cursor-pointer items-center gap-2.5 text-sm;
+  color: var(--c-text-2);
 }
 
 .space__progress {
-  @apply mb-4;
+  @apply flex items-center gap-3;
+}
+
+.space__progress-track {
+  @apply h-1.5 flex-1 overflow-hidden rounded-full;
+  background: var(--c-surface-3);
+}
+
+.space__progress-bar {
+  @apply h-full rounded-full transition-[width] duration-200;
+  background: var(--c-accent);
 }
 
 .space__progress-text {
-  @apply mt-1 text-right text-xs text-gray-400;
+  @apply w-10 text-right text-xs tabular-nums;
+  color: var(--c-text-4);
 }
 
-.space__empty-state {
-  @apply flex min-h-[18rem] flex-col items-center justify-center rounded-2xl border border-dashed border-[#3b3b3b] bg-[#1a1a1a] px-6 text-center;
+.space__search {
+  @apply flex flex-col gap-2;
 }
 
-.space__empty-icon {
-  @apply text-5xl text-gray-500;
+.space__search-bar {
+  @apply flex h-12 items-center gap-2 pr-1.5 pl-3.5;
+  border-radius: var(--r-lg);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-sep);
 }
 
-.space__empty-title {
-  @apply mt-4 text-lg font-semibold text-white;
+.space__search-bar:focus-within {
+  border-color: var(--c-accent-ring);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
 }
 
-.space__empty-text {
-  @apply mt-2 max-w-xl text-sm leading-relaxed text-gray-400;
+.space__search-icon {
+  @apply flex-none text-base;
+  color: var(--c-text-4);
 }
 
-.space__list-status {
-  @apply py-3 text-center text-xs text-gray-500;
+.space__search-input {
+  @apply min-w-0 flex-1 border-0 bg-transparent text-[15px] outline-none;
+  color: var(--c-text);
+}
+
+.space__search-input::placeholder {
+  color: var(--c-text-4);
+}
+
+.space__search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.space__depth {
+  @apply h-[30px] cursor-pointer appearance-none rounded-full border-0 px-3 text-[13px] outline-none max-sm:hidden;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+}
+
+.space__scroll {
+  @apply flex flex-col;
+}
+
+.space__list {
+  @apply flex flex-col gap-2.5;
+}
+
+.space__chunk {
+  @apply flex flex-col gap-2.5 p-4;
+}
+
+.space__chunk-head {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.space__label {
+  @apply inline-flex h-[22px] flex-none items-center rounded-full px-2 text-[11px] font-semibold;
+  background: color-mix(in srgb, var(--doc-color) 18%, transparent);
+  color: var(--doc-color);
+}
+
+.space__source {
+  @apply min-w-0 flex-1 truncate text-xs;
+  font-family: var(--font-mono);
+  color: var(--c-text-4);
+}
+
+.space__content {
+  @apply m-0 text-sm leading-relaxed break-words whitespace-pre-wrap;
+  color: var(--c-text-2);
+  overflow-wrap: anywhere;
+}
+
+.space__status {
+  @apply py-3 text-center text-xs;
+  color: var(--c-text-4);
 }
 </style>

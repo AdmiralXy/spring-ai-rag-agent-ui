@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 
-const router = useRouter()
 const { confirm } = useConfirmDialog()
 const spacesStore = useSpacesStore()
 const { spaces, loading } = storeToRefs(spacesStore)
@@ -40,63 +38,74 @@ async function createSpace() {
 </script>
 
 <template>
-  <LayoutWrapper title="Spaces">
+  <LayoutWrapper title="Spaces" subtitle="Knowledge bases the assistant can search">
     <template #header-actions>
-      <UButton color="primary" variant="solid" size="sm" @click="toggleCreate">
-        <Icon name="material-symbols:add" class="mr-1" /> Create
-      </UButton>
+      <button
+        type="button"
+        class="ui-btn"
+        :class="creating ? 'ui-btn--secondary' : 'ui-btn--primary'"
+        @click="toggleCreate"
+      >
+        <Icon :name="creating ? 'lucide:x' : 'lucide:plus'" />
+        {{ creating ? 'Cancel' : 'New space' }}
+      </button>
     </template>
 
-    <div v-if="creating" class="spaces__create">
-      <input v-model="newSpaceName" type="text" placeholder="Space name" class="spaces__input" />
-      <div class="spaces__input__buttons">
-        <UButton
-          icon="material-symbols:check"
-          color="primary"
-          variant="solid"
-          size="sm"
-          :loading="loading"
-          @click="createSpace"
-        >
-          Save
-        </UButton>
-        <UButton
-          icon="material-symbols:close"
-          color="neutral"
-          variant="outline"
-          :ui="{
-            base: 'bg-transparent'
-          }"
-          size="sm"
-          @click="toggleCreate"
-        >
-          Cancel
-        </UButton>
+    <form v-if="creating" class="spaces__create" @submit.prevent="createSpace">
+      <label for="space-name" class="ui-sr-only">Space name</label>
+      <input
+        id="space-name"
+        v-model="newSpaceName"
+        type="text"
+        placeholder="Space name"
+        class="ui-input"
+        autofocus
+      />
+      <button
+        type="submit"
+        class="ui-btn ui-btn--primary ui-btn--lg"
+        :disabled="!newSpaceName.trim() || loading"
+      >
+        Create
+      </button>
+    </form>
+
+    <div v-if="loading && !spaces.length" class="ui-group">
+      <div v-for="n in 3" :key="n" class="ui-group-row">
+        <USkeleton class="h-8 w-8 rounded-[9px]" />
+        <USkeleton class="h-4 w-40 rounded" />
       </div>
     </div>
 
-    <ul v-if="loading" class="spaces__list">
-      <li v-for="n in 3" :key="n" class="spaces__item">
-        <USkeleton class="h-5 w-32 animate-pulse rounded bg-gray-700/50" />
-        <USkeleton class="h-5 w-6 animate-pulse rounded bg-gray-700/50" />
-      </li>
-    </ul>
+    <div v-else-if="!spaces.length" class="ui-empty">
+      <Icon name="lucide:layers" class="ui-empty__icon" />
+      <p class="ui-empty__title">No spaces yet</p>
+      <p class="text-sm">
+        Create a space and add text, files, Confluence pages or a Git repository.
+      </p>
+    </div>
 
-    <ul v-else class="spaces__list">
-      <li
-        v-for="s in spaces"
-        :key="s.id"
-        class="spaces__item"
-        @click="router.push({ name: 'spaces-id', params: { id: s.id } })"
-      >
-        <span class="spaces__name">{{ s.name }}</span>
-        <div class="spaces__actions">
-          <button class="spaces__delete" @click.stop="deleteSpace(s.id)">
-            <Icon name="material-symbols:delete-outline" />
-          </button>
-        </div>
-      </li>
-    </ul>
+    <div v-else class="ui-group">
+      <div v-for="s in spaces" :key="s.id" class="spaces__row">
+        <NuxtLink
+          :to="{ name: 'spaces-id', params: { id: s.id } }"
+          class="ui-group-row spaces__link"
+        >
+          <span class="spaces__icon"><Icon name="lucide:layers" /></span>
+          <span class="spaces__name">{{ s.name }}</span>
+          <Icon name="lucide:chevron-right" class="spaces__chevron" />
+        </NuxtLink>
+        <button
+          type="button"
+          class="ui-icon-btn ui-icon-btn--danger spaces__delete"
+          :aria-label="`Delete ${s.name}`"
+          title="Delete space"
+          @click="deleteSpace(s.id)"
+        >
+          <Icon name="lucide:trash-2" />
+        </button>
+      </div>
+    </div>
   </LayoutWrapper>
 </template>
 
@@ -104,46 +113,48 @@ async function createSpace() {
 @import 'tailwindcss/theme';
 
 .spaces__create {
-  @apply mb-4 flex w-full flex-wrap items-center gap-2 rounded-md bg-[#1e1e1e] p-3 max-lg:grid max-lg:gap-2;
+  @apply flex gap-2.5 max-sm:flex-col;
 }
 
-.spaces__input {
-  @apply min-w-[200px] flex-1 rounded-md border border-[#333] bg-[#111] px-3 py-2 text-white outline-none;
+.spaces__row {
+  @apply relative flex items-center;
 }
 
-.spaces__input:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
+.spaces__row + .spaces__row {
+  border-top: 1px solid var(--c-sep);
 }
 
-.spaces__input__buttons {
-  @apply flex gap-2;
+.spaces__link {
+  @apply min-h-[56px] flex-1 gap-3 pr-12;
 }
 
-.spaces__list {
-  @apply flex flex-1 flex-col gap-2 overflow-y-auto scroll-smooth pr-1;
-}
-
-.spaces__item {
-  @apply flex cursor-pointer items-center justify-between rounded-md border border-[#333] bg-[#1e1e1e] p-3 transition-colors duration-200;
-}
-
-.spaces__item:hover {
-  @apply bg-[#2a2a2a];
+.spaces__icon {
+  @apply flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-[15px];
+  background: var(--c-accent-soft);
+  color: var(--c-accent-hover);
 }
 
 .spaces__name {
-  @apply text-base text-gray-100;
+  @apply min-w-0 flex-1 truncate text-[15px];
 }
 
-.spaces__actions {
-  @apply flex items-center gap-2;
+.spaces__chevron {
+  @apply flex-none;
+  color: #636366;
 }
 
 .spaces__delete {
-  @apply cursor-pointer border-none bg-transparent p-1 text-[1.2rem] text-gray-400 transition-colors duration-200;
+  @apply absolute right-9 opacity-0 transition-opacity;
 }
 
-.spaces__delete:hover {
-  @apply text-red-500;
+.spaces__row:hover .spaces__delete,
+.spaces__delete:focus-visible {
+  @apply opacity-100;
+}
+
+@media (hover: none) {
+  .spaces__delete {
+    @apply opacity-100;
+  }
 }
 </style>

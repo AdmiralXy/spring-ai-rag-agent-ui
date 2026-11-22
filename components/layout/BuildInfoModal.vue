@@ -31,29 +31,30 @@ const buildDate = computed(() => {
 <template>
   <UModal
     v-model:open="openModel"
-    title="Build information"
-    description="Link to repository and current build metadata"
-    :ui="{
-      overlay: 'bg-black/60 backdrop-blur-[1px]',
-      content: 'max-w-sm bg-[#171717] border border-[#2f2f2f] !divide-none !ring-0 shadow-xl',
-      header: 'm-0 min-h-0 border-0 p-0',
-      title: 'sr-only',
-      description: 'sr-only',
-      body: 'pt-0'
-    }"
+    title="About"
+    description="Repository and build information"
+    :ui="{ content: 'max-w-sm' }"
   >
     <template #body>
-      <div class="build-info-modal">
+      <div class="ui-group">
         <a
           :href="repositoryUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="build-info-modal__link"
+          class="ui-group-row build-info__link"
         >
-          <Icon name="mdi:github" />
-          <span>GitHub repository</span>
+          <Icon name="simple-icons:github" class="build-info__icon" />
+          <span class="flex-1">GitHub repository</span>
+          <Icon name="lucide:arrow-up-right" class="build-info__chevron" />
         </a>
-        <p class="build-info-modal__row">Build: #{{ buildNumber }} {{ buildDate }}</p>
+        <div class="ui-group-row">
+          <span class="flex-1">Build</span>
+          <span class="build-info__value">#{{ buildNumber }}</span>
+        </div>
+        <div class="ui-group-row">
+          <span class="flex-1">Date</span>
+          <span class="build-info__value">{{ buildDate }}</span>
+        </div>
       </div>
     </template>
   </UModal>
@@ -62,19 +63,21 @@ const buildDate = computed(() => {
 <style scoped>
 @import 'tailwindcss/theme';
 
-.build-info-modal {
-  @apply flex flex-col gap-2;
+.build-info__link {
+  @apply text-sm;
 }
 
-.build-info-modal__link {
-  @apply inline-flex items-center gap-2 text-sm text-blue-300 transition-colors duration-200;
+.build-info__icon {
+  @apply text-base;
+  color: var(--c-text-2);
 }
 
-.build-info-modal__link:hover {
-  @apply text-blue-200;
+.build-info__chevron {
+  color: var(--c-text-4);
 }
 
-.build-info-modal__row {
-  @apply text-sm text-gray-300;
+.build-info__value {
+  @apply text-sm;
+  color: var(--c-text-3);
 }
 </style>

@@ -77,136 +77,165 @@ async function removeTemplate(id: string) {
 </script>
 
 <template>
-  <LayoutWrapper title="Prompts">
+  <LayoutWrapper title="Prompts" subtitle="Reusable messages for the composer">
     <template #header-actions>
-      <UButton color="primary" variant="solid" size="sm" @click="toggleCreate">
-        <Icon name="material-symbols:add" class="mr-1" />
-        {{ creating ? 'Cancel' : 'Create' }}
-      </UButton>
+      <button
+        type="button"
+        class="ui-btn"
+        :class="creating ? 'ui-btn--secondary' : 'ui-btn--primary'"
+        @click="toggleCreate"
+      >
+        <Icon :name="creating ? 'lucide:x' : 'lucide:plus'" />
+        {{ creating ? 'Cancel' : 'New prompt' }}
+      </button>
     </template>
 
-    <div v-if="creating" class="prompts__create">
-      <input v-model="newName" type="text" placeholder="Prompt name" class="prompts__input" />
-      <textarea
-        v-model="newContent"
-        rows="5"
-        placeholder="Prompt content"
-        class="prompts__textarea"
+    <form v-if="creating" class="ui-card prompts__editor" @submit.prevent="createTemplate">
+      <label for="prompt-new-name" class="ui-section-label">Name</label>
+      <input
+        id="prompt-new-name"
+        v-model="newName"
+        type="text"
+        placeholder="e.g. Code review"
+        class="ui-input"
       />
-      <div class="prompts__create-actions">
-        <UButton
-          color="primary"
-          variant="solid"
-          size="sm"
-          :loading="loading"
-          @click="createTemplate"
+      <label for="prompt-new-content" class="ui-section-label">Content</label>
+      <textarea
+        id="prompt-new-content"
+        v-model="newContent"
+        rows="6"
+        placeholder="The message inserted into the composer"
+        class="ui-input"
+      />
+      <div class="prompts__actions">
+        <button
+          type="submit"
+          class="ui-btn ui-btn--primary"
+          :disabled="!newName.trim() || !newContent.trim() || loading"
         >
           Save
-        </UButton>
-        <UButton color="neutral" variant="outline" size="sm" @click="resetCreateForm"
-          >Cancel</UButton
-        >
+        </button>
+        <button type="button" class="ui-btn ui-btn--secondary" @click="resetCreateForm">
+          Cancel
+        </button>
+      </div>
+    </form>
+
+    <div v-if="loading && !templates.length" class="prompts__list">
+      <div v-for="n in 3" :key="n" class="ui-card prompts__card">
+        <USkeleton class="h-4 w-48 rounded" />
+        <USkeleton class="h-16 w-full rounded" />
       </div>
     </div>
 
-    <ul v-if="loading && !templates.length" class="prompts__list">
-      <li v-for="n in 3" :key="n" class="prompts__item">
-        <USkeleton class="h-5 w-48 animate-pulse rounded bg-gray-700/50" />
-        <USkeleton class="h-20 w-full animate-pulse rounded bg-gray-700/50" />
-      </li>
-    </ul>
+    <div v-else-if="!templates.length && !creating" class="ui-empty">
+      <Icon name="lucide:file-text" class="ui-empty__icon" />
+      <p class="ui-empty__title">No prompts yet</p>
+      <p class="text-sm">Save prompts you use often and insert them from the composer.</p>
+    </div>
 
-    <div v-else-if="!templates.length" class="prompts__empty">No templates yet.</div>
-
-    <ul v-else class="prompts__list">
-      <li v-for="template in templates" :key="template.id" class="prompts__item">
-        <template v-if="editingId === template.id">
-          <input v-model="editName" type="text" class="prompts__input" />
-          <textarea v-model="editContent" rows="5" class="prompts__textarea" />
+    <div v-else class="prompts__list">
+      <article v-for="template in templates" :key="template.id" class="ui-card prompts__card">
+        <form
+          v-if="editingId === template.id"
+          class="prompts__form"
+          @submit.prevent="saveEdit(template.id)"
+        >
+          <label :for="`prompt-name-${template.id}`" class="ui-section-label">Name</label>
+          <input
+            :id="`prompt-name-${template.id}`"
+            v-model="editName"
+            type="text"
+            class="ui-input"
+          />
+          <label :for="`prompt-content-${template.id}`" class="ui-section-label">Content</label>
+          <textarea
+            :id="`prompt-content-${template.id}`"
+            v-model="editContent"
+            rows="6"
+            class="ui-input"
+          />
           <div class="prompts__actions">
-            <UButton
-              color="primary"
-              variant="solid"
-              size="sm"
-              :loading="loading"
-              @click="saveEdit(template.id)"
-            >
-              Save
-            </UButton>
-            <UButton color="neutral" variant="outline" size="sm" @click="cancelEdit"
-              >Cancel</UButton
-            >
-            <UButton
-              color="error"
-              variant="soft"
-              size="sm"
-              :loading="loading"
+            <button type="submit" class="ui-btn ui-btn--primary" :disabled="loading">Save</button>
+            <button type="button" class="ui-btn ui-btn--secondary" @click="cancelEdit">
+              Cancel
+            </button>
+            <div class="flex-1"></div>
+            <button
+              type="button"
+              class="ui-btn ui-btn--danger"
+              :disabled="loading"
               @click="removeTemplate(template.id)"
             >
               Delete
-            </UButton>
+            </button>
           </div>
-        </template>
+        </form>
 
         <template v-else>
-          <div class="prompts__item-head">
-            <h3 class="prompts__title">{{ template.name }}</h3>
-            <div class="prompts__actions">
-              <UButton color="neutral" variant="soft" size="xs" @click="startEdit(template)"
-                >Edit</UButton
-              >
-              <UButton color="error" variant="soft" size="xs" @click="removeTemplate(template.id)">
-                Delete
-              </UButton>
-            </div>
+          <div class="prompts__head">
+            <h2 class="prompts__title">{{ template.name }}</h2>
+            <button
+              type="button"
+              class="ui-icon-btn"
+              :aria-label="`Edit ${template.name}`"
+              title="Edit"
+              @click="startEdit(template)"
+            >
+              <Icon name="lucide:pencil" />
+            </button>
+            <button
+              type="button"
+              class="ui-icon-btn ui-icon-btn--danger"
+              :aria-label="`Delete ${template.name}`"
+              title="Delete"
+              @click="removeTemplate(template.id)"
+            >
+              <Icon name="lucide:trash-2" />
+            </button>
           </div>
           <p class="prompts__content">{{ template.content }}</p>
         </template>
-      </li>
-    </ul>
+      </article>
+    </div>
   </LayoutWrapper>
 </template>
 
 <style scoped>
 @import 'tailwindcss/theme';
 
-.prompts__create,
-.prompts__item {
-  @apply mb-3 flex flex-col gap-3 rounded-lg border border-[#333] bg-[#1e1e1e] p-3;
-}
-
-.prompts__list {
+.prompts__editor,
+.prompts__form {
   @apply flex flex-col gap-2;
 }
 
-.prompts__item-head {
-  @apply flex items-start justify-between gap-3;
+.prompts__editor {
+  @apply p-4;
+}
+
+.prompts__list {
+  @apply grid gap-3 md:grid-cols-2;
+}
+
+.prompts__card {
+  @apply flex flex-col gap-2 p-4;
+}
+
+.prompts__head {
+  @apply flex items-center gap-1;
 }
 
 .prompts__title {
-  @apply text-base font-semibold text-white;
+  @apply m-0 min-w-0 flex-1 truncate text-[15px] font-semibold;
+  color: var(--c-text);
 }
 
 .prompts__content {
-  @apply text-sm leading-relaxed whitespace-pre-wrap text-gray-300;
+  @apply m-0 line-clamp-5 text-sm leading-relaxed whitespace-pre-wrap;
+  color: var(--c-text-3);
 }
 
-.prompts__input,
-.prompts__textarea {
-  @apply w-full rounded-md border border-[#3d3d3d] bg-[#111] px-3 py-2 text-white outline-none;
-}
-
-.prompts__input:focus,
-.prompts__textarea:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
-}
-
-.prompts__actions,
-.prompts__create-actions {
-  @apply flex flex-wrap gap-2;
-}
-
-.prompts__empty {
-  @apply rounded-lg border border-dashed border-[#3a3a3a] bg-[#1b1b1b] p-5 text-sm text-gray-400;
+.prompts__actions {
+  @apply mt-2 flex flex-wrap items-center gap-2;
 }
 </style>

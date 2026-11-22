@@ -21,65 +21,104 @@ watch(
 )
 
 const dirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(props.model))
+const valid = computed(() =>
+  Boolean(form.value.baseUrl?.trim() && form.value.apiKey?.trim() && form.value.name?.trim())
+)
 
 function save() {
-  const payload: EmbeddingsModelSettings = {
+  if (!valid.value) return
+  emit('save', {
     provider: 'OPENAI',
     baseUrl: form.value.baseUrl.trim(),
     apiKey: form.value.apiKey.trim(),
     name: form.value.name.trim(),
     dimensions: Number(form.value.dimensions),
     maxDocumentTokens: Number(form.value.maxDocumentTokens)
-  }
-
-  if (!payload.baseUrl || !payload.apiKey || !payload.name) return
-  emit('save', payload)
+  })
 }
 </script>
 
 <template>
-  <section class="settings__section">
-    <div class="settings__section-head">
-      <h2>Embeddings model</h2>
-      <UButton
-        color="primary"
-        variant="solid"
-        size="sm"
-        :disabled="!dirty"
-        :loading="loading"
-        @click="save"
-      >
-        Save
-      </UButton>
-    </div>
-
-    <div class="settings__card">
-      <div class="settings__grid settings__grid--singleton">
-        <label class="settings__field">
-          <span>Provider</span>
-          <input value="OPENAI" type="text" class="settings__input" disabled />
+  <section class="section" aria-label="Embeddings model">
+    <div class="section__block">
+      <div class="ui-section-label">Model</div>
+      <div class="ui-group">
+        <div class="ui-group-row">
+          <span class="ui-group-row__label">Provider</span>
+          <span class="ui-group-row__control">OpenAI-compatible</span>
+        </div>
+        <label class="ui-group-row">
+          <span class="ui-group-row__label">Model</span>
+          <input
+            v-model="form.name"
+            type="text"
+            class="ui-group-row__control ui-mono text-[13px]"
+            placeholder="text-embedding-3-small"
+          />
         </label>
-        <label class="settings__field">
-          <span>Name</span>
-          <input v-model="form.name" type="text" class="settings__input" />
+        <label class="ui-group-row">
+          <span class="ui-group-row__label">Base URL</span>
+          <input
+            v-model="form.baseUrl"
+            type="url"
+            class="ui-group-row__control ui-mono text-[13px]"
+            placeholder="https://"
+          />
         </label>
-        <label class="settings__field">
-          <span>Base URL</span>
-          <input v-model="form.baseUrl" type="text" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>API key</span>
-          <input v-model="form.apiKey" type="password" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>Dimensions</span>
-          <input v-model.number="form.dimensions" type="number" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>Max document tokens</span>
-          <input v-model.number="form.maxDocumentTokens" type="number" class="settings__input" />
+        <label class="ui-group-row">
+          <span class="ui-group-row__label">API key</span>
+          <input
+            v-model="form.apiKey"
+            type="password"
+            autocomplete="off"
+            class="ui-group-row__control"
+          />
         </label>
       </div>
+    </div>
+
+    <div class="section__block">
+      <div class="ui-section-label">Vectors</div>
+      <div class="ui-group">
+        <label class="ui-group-row">
+          <span class="flex-1">Dimensions</span>
+          <input
+            v-model.number="form.dimensions"
+            type="number"
+            class="ui-group-row__control section__num"
+          />
+        </label>
+        <label class="ui-group-row">
+          <span class="flex-1">Max document tokens</span>
+          <input
+            v-model.number="form.maxDocumentTokens"
+            type="number"
+            class="ui-group-row__control section__num"
+          />
+        </label>
+      </div>
+      <p class="ui-hint">
+        Dimensions must match the vector column; changing the model requires re-indexing spaces.
+      </p>
+    </div>
+
+    <div class="section__actions">
+      <button
+        type="button"
+        class="ui-btn ui-btn--primary ui-btn--lg"
+        :disabled="!dirty || !valid || loading"
+        @click="save"
+      >
+        Save changes
+      </button>
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary ui-btn--lg"
+        :disabled="!dirty"
+        @click="form = { ...props.model }"
+      >
+        Cancel
+      </button>
     </div>
   </section>
 </template>
@@ -87,43 +126,19 @@ function save() {
 <style scoped>
 @import 'tailwindcss/theme';
 
-.settings__section {
-  @apply flex flex-col gap-3;
+.section {
+  @apply flex max-w-[640px] flex-col gap-5;
 }
 
-.settings__section-head {
-  @apply flex items-center justify-between;
+.section__block {
+  @apply flex flex-col gap-2;
 }
 
-.settings__section-head h2 {
-  @apply text-lg font-semibold text-white;
+.section__num {
+  @apply w-28 flex-none;
 }
 
-.settings__card {
-  @apply rounded-lg border border-[#333] bg-[#1e1e1e] p-4;
-}
-
-.settings__grid {
-  @apply grid gap-3 md:grid-cols-2;
-}
-
-.settings__field {
-  @apply flex flex-col gap-1;
-}
-
-.settings__field span {
-  @apply text-xs text-gray-400;
-}
-
-.settings__input {
-  @apply w-full rounded-md border border-[#3d3d3d] bg-[#111] px-3 py-2 text-white outline-none;
-}
-
-.settings__input:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
-}
-
-.settings__input:disabled {
-  @apply opacity-70;
+.section__actions {
+  @apply flex flex-wrap gap-2.5;
 }
 </style>

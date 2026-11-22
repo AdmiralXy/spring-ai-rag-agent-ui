@@ -5,7 +5,14 @@ declare global {
   export interface ModelInfoRs {
     label: string
     value: string
+    provider?: ChatModelProvider
+    /** The model supports thinking (reasoning effort levels) */
+    thinking?: boolean
+    /** The model accepts images (screenshots can be attached) */
+    vision?: boolean
   }
+
+  export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high'
 
   export interface ModelsListRs {
     models: ModelInfoRs[]
@@ -214,9 +221,73 @@ declare global {
     distance?: number
   }
 
+  /** Image attached to a user message (base64 data without the `data:` prefix) */
+  export interface ChatAttachment {
+    mimeType: string
+    data: string
+    name?: string
+  }
+
   export interface ChatMessage {
+    /** Server id; known once the message is stored (needed to delete it) */
+    id?: string
     role: string
     content: string
+    /** Structured output (text, thinking, tool steps, errors, notices) */
+    parts?: ChatMessagePart[]
+    /** Images of a user message */
+    attachments?: ChatAttachment[]
+    /** Client-only: answer produced by the agent */
+    agent?: boolean
+    /** Client-only: the answer is still streaming */
+    pending?: boolean
+    /** Client-only: the backend rejected the message before storing it */
+    rejected?: boolean
+    /** Client-only: transient agent status (retrying, compacting...) */
+    status?: string
+    /** Summary of a finished agent run (agent answers) */
+    stats?: AgentRunStats
+    createdAt?: string
+  }
+
+  export type ChatMessagePartType = 'text' | 'thinking' | 'tool' | 'error' | 'notice'
+
+  export interface ChatMessagePart {
+    type: ChatMessagePartType
+    text?: string
+    toolId?: string
+    name?: string
+    title?: string
+    input?: string
+    output?: string
+    isError?: boolean
+    parentId?: string
+  }
+
+  export interface AgentRunStats {
+    numTurns: number
+    durationMs: number
+    costUsd: number
+    usage?: {
+      inputTokens: number
+      outputTokens: number
+      cacheReadTokens: number
+      cacheCreationTokens: number
+    } | null
+    interrupted?: boolean
+  }
+
+  export interface WorkspaceEntry {
+    path: string
+    type: 'file' | 'dir'
+    size: number
+    modifiedAt: string
+    collapsed?: boolean
+  }
+
+  export interface WorkspaceListing {
+    entries: WorkspaceEntry[]
+    truncated: boolean
   }
 
   export interface Page<T> extends Slice<T> {
@@ -238,9 +309,12 @@ declare global {
     modelId?: string
     modelName?: string
     ragSpaces: string[]
+    createdAt?: string
+    /** Last activity, chats are sorted by it */
+    updatedAt?: string
   }
 
-  export type ChatModelProvider = 'OPENAI' | 'ANTHROPIC'
+  export type ChatModelProvider = 'OPENAI' | 'ANTHROPIC' | 'AGENT'
 
   export interface ChatModelSettings {
     id: string
@@ -254,6 +328,11 @@ declare global {
     priority: number
     temperature: number
     maxContextTokens: number
+    thinking: boolean
+    /** Max tokens of one answer, 0 = provider default */
+    maxOutputTokens: number
+    /** The model accepts images */
+    vision: boolean
   }
 
   export interface UpsertChatModelRq {
@@ -267,6 +346,11 @@ declare global {
     priority: number
     temperature: number
     maxContextTokens: number
+    thinking: boolean
+    /** Max tokens of one answer, 0 = provider default */
+    maxOutputTokens: number
+    /** The model accepts images */
+    vision: boolean
   }
 
   export interface GetChatModelsSettingsRs {

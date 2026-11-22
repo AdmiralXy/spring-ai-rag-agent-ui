@@ -11,7 +11,10 @@ const emit = defineEmits<{
 }>()
 
 const form = ref<SummarizerModelSettings>({ ...props.model })
-const providerOptions: ChatModelProvider[] = ['OPENAI', 'ANTHROPIC']
+const providers: Array<{ value: ChatModelProvider; label: string }> = [
+  { value: 'OPENAI', label: 'OpenAI' },
+  { value: 'ANTHROPIC', label: 'Anthropic' }
+]
 
 watch(
   () => props.model,
@@ -22,64 +25,103 @@ watch(
 )
 
 const dirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(props.model))
+const valid = computed(() =>
+  Boolean(form.value.name?.trim() && form.value.baseUrl?.trim() && form.value.apiKey?.trim())
+)
 
 function save() {
-  const payload: SummarizerModelSettings = {
+  if (!valid.value) return
+  emit('save', {
     provider: form.value.provider,
     name: form.value.name.trim(),
     baseUrl: form.value.baseUrl.trim(),
     apiKey: form.value.apiKey.trim(),
-    systemPrompt: form.value.systemPrompt.trim()
-  }
-
-  if (!payload.name || !payload.baseUrl || !payload.apiKey) return
-  emit('save', payload)
+    systemPrompt: (form.value.systemPrompt ?? '').trim()
+  })
 }
 </script>
 
 <template>
-  <section class="settings__section">
-    <div class="settings__section-head">
-      <h2>Summarizer model</h2>
-      <UButton
-        color="primary"
-        variant="solid"
-        size="sm"
-        :disabled="!dirty"
-        :loading="loading"
-        @click="save"
-      >
-        Save
-      </UButton>
+  <section class="section" aria-label="Summarizer model">
+    <p class="ui-hint">Names new chats from their first message. Use a small, fast model.</p>
+
+    <div class="section__block">
+      <div class="ui-section-label">Provider</div>
+      <div class="ui-segmented section__providers" role="radiogroup" aria-label="Provider">
+        <button
+          v-for="p in providers"
+          :key="p.value"
+          type="button"
+          role="radio"
+          class="ui-segmented__item"
+          :aria-checked="form.provider === p.value"
+          @click="form.provider = p.value"
+        >
+          {{ p.label }}
+        </button>
+      </div>
     </div>
 
-    <div class="settings__card">
-      <div class="settings__grid settings__grid--singleton">
-        <label class="settings__field">
-          <span>Provider</span>
-          <select v-model="form.provider" class="settings__input">
-            <option v-for="option in providerOptions" :key="option" :value="option">
-              {{ option }}
-            </option>
-          </select>
+    <div class="section__block">
+      <div class="ui-section-label">Model</div>
+      <div class="ui-group">
+        <label class="ui-group-row">
+          <span class="ui-group-row__label">Model</span>
+          <input
+            v-model="form.name"
+            type="text"
+            class="ui-group-row__control ui-mono text-[13px]"
+          />
         </label>
-        <label class="settings__field">
-          <span>Name</span>
-          <input v-model="form.name" type="text" class="settings__input" />
+        <label class="ui-group-row">
+          <span class="ui-group-row__label">Base URL</span>
+          <input
+            v-model="form.baseUrl"
+            type="url"
+            class="ui-group-row__control ui-mono text-[13px]"
+            placeholder="https://"
+          />
         </label>
-        <label class="settings__field">
-          <span>Base URL</span>
-          <input v-model="form.baseUrl" type="text" class="settings__input" />
-        </label>
-        <label class="settings__field">
-          <span>API key</span>
-          <input v-model="form.apiKey" type="password" class="settings__input" />
-        </label>
-        <label class="settings__field settings__field--full">
-          <span>System prompt</span>
-          <textarea v-model="form.systemPrompt" rows="4" class="settings__textarea" />
+        <label class="ui-group-row">
+          <span class="ui-group-row__label">API key</span>
+          <input
+            v-model="form.apiKey"
+            type="password"
+            autocomplete="off"
+            class="ui-group-row__control"
+          />
         </label>
       </div>
+    </div>
+
+    <div class="section__block">
+      <label for="summarizer-prompt" class="ui-section-label">Prompt</label>
+      <textarea
+        id="summarizer-prompt"
+        v-model="form.systemPrompt"
+        rows="4"
+        class="ui-input"
+        placeholder="Use %s where the first message should go"
+      />
+    </div>
+
+    <div class="section__actions">
+      <button
+        type="button"
+        class="ui-btn ui-btn--primary ui-btn--lg"
+        :disabled="!dirty || !valid || loading"
+        @click="save"
+      >
+        Save changes
+      </button>
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary ui-btn--lg"
+        :disabled="!dirty"
+        @click="form = { ...props.model }"
+      >
+        Cancel
+      </button>
     </div>
   </section>
 </template>
@@ -87,45 +129,23 @@ function save() {
 <style scoped>
 @import 'tailwindcss/theme';
 
-.settings__section {
-  @apply flex flex-col gap-3;
+.section {
+  @apply flex max-w-[640px] flex-col gap-5;
 }
 
-.settings__section-head {
-  @apply flex items-center justify-between;
+.section__block {
+  @apply flex flex-col gap-2;
 }
 
-.settings__section-head h2 {
-  @apply text-lg font-semibold text-white;
+.section__providers {
+  @apply grid w-full grid-cols-2;
 }
 
-.settings__card {
-  @apply rounded-lg border border-[#333] bg-[#1e1e1e] p-4;
+.section__providers .ui-segmented__item {
+  @apply h-[34px];
 }
 
-.settings__grid {
-  @apply grid gap-3 md:grid-cols-2;
-}
-
-.settings__field {
-  @apply flex flex-col gap-1;
-}
-
-.settings__field span {
-  @apply text-xs text-gray-400;
-}
-
-.settings__field--full {
-  @apply md:col-span-2;
-}
-
-.settings__input,
-.settings__textarea {
-  @apply w-full rounded-md border border-[#3d3d3d] bg-[#111] px-3 py-2 text-white outline-none;
-}
-
-.settings__input:focus,
-.settings__textarea:focus {
-  @apply border-blue-500 ring-2 ring-blue-500/30;
+.section__actions {
+  @apply flex flex-wrap gap-2.5;
 }
 </style>
