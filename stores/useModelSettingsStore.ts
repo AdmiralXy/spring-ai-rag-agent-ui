@@ -1,19 +1,8 @@
 import { defineStore } from 'pinia'
-import { useApi } from '~/composables/useApi'
+import { errorMessage, errorStatus, useApi } from '~/composables/useApi'
+import useNotification from '~/composables/useNotification'
 import { useModelsStore } from '~/stores/useModelsStore'
-
-const SETTINGS_PASSWORD_KEY = 'settings-page-password'
-
-function getSettingsAuthHeaders() {
-  if (!import.meta.client) return undefined
-
-  const password = sessionStorage.getItem(SETTINGS_PASSWORD_KEY)
-  if (!password) return undefined
-
-  return {
-    Authorization: `Basic ${password}`
-  }
-}
+import { NotificationType } from '~/types/notification'
 
 const defaultEmbeddings: EmbeddingsModelSettings = {
   provider: 'OPENAI',
@@ -21,7 +10,8 @@ const defaultEmbeddings: EmbeddingsModelSettings = {
   apiKey: '',
   name: '',
   dimensions: 1536,
-  maxDocumentTokens: 7000
+  maxDocumentTokens: 7000,
+  indexedChunks: 0
 }
 
 const defaultSummarizer: SummarizerModelSettings = {
@@ -31,6 +21,8 @@ const defaultSummarizer: SummarizerModelSettings = {
   apiKey: '',
   systemPrompt: ''
 }
+
+export type SaveEmbeddingsResult = 'saved' | 'needs-confirmation' | 'failed'
 
 export const useModelSettingsStore = defineStore('model-settings', {
   state: () => ({
@@ -55,9 +47,7 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingChat = true
       try {
         const api = useApi()
-        const res = await api.get<GetChatModelsSettingsRs>('/settings/models/chat', {
-          headers: getSettingsAuthHeaders()
-        })
+        const res = await api.get<GetChatModelsSettingsRs>('/settings/models/chat')
         this.chatModels = res.models
         this.loadedChat = true
         return this.chatModels
@@ -70,9 +60,7 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingChat = true
       try {
         const api = useApi()
-        await api.post<ChatModelSettings>('/settings/models/chat', payload, {
-          headers: getSettingsAuthHeaders()
-        })
+        await api.post<ChatModelSettings>('/settings/models/chat', payload)
         await this.fetchChatModels()
         await this.syncSelectableModels()
       } finally {
@@ -84,9 +72,7 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingChat = true
       try {
         const api = useApi()
-        await api.put<ChatModelSettings>(`/settings/models/chat/${id}`, payload, {
-          headers: getSettingsAuthHeaders()
-        })
+        await api.put<ChatModelSettings>(`/settings/models/chat/${id}`, payload)
         await this.fetchChatModels()
         await this.syncSelectableModels()
       } finally {
@@ -98,9 +84,7 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingChat = true
       try {
         const api = useApi()
-        await api.del<null>(`/settings/models/chat/${id}`, {
-          headers: getSettingsAuthHeaders()
-        })
+        await api.del<null>(`/settings/models/chat/${id}`)
         this.chatModels = this.chatModels.filter((model) => model.id !== id)
         await this.syncSelectableModels()
       } finally {
@@ -112,10 +96,7 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingEmbeddings = true
       try {
         const api = useApi()
-        const res = await api.get<EmbeddingsModelSettings>('/settings/models/embeddings', {
-          headers: getSettingsAuthHeaders()
-        })
-        this.embeddings = res
+        this.embeddings = await api.get<EmbeddingsModelSettings>('/settings/models/embeddings')
         this.loadedEmbeddings = true
         return this.embeddings
       } finally {
@@ -123,14 +104,25 @@ export const useModelSettingsStore = defineStore('model-settings', {
       }
     },
 
-    async updateEmbeddings(payload: EmbeddingsModelSettings) {
+    /**
+     * Saves the embedding model. The backend answers 409 when the change would delete indexed chunks and
+     * `resetDocuments` is not set; the caller then asks the user and saves again with it.
+     */
+    async updateEmbeddings(payload: EmbeddingsModelSettings): Promise<SaveEmbeddingsResult> {
       this.loadingEmbeddings = true
       try {
         const api = useApi()
-        const res = await api.put<EmbeddingsModelSettings>('/settings/models/embeddings', payload, {
-          headers: getSettingsAuthHeaders()
-        })
-        this.embeddings = res
+        this.embeddings = await api.put<EmbeddingsModelSettings>(
+          '/settings/models/embeddings',
+          payload,
+          undefined,
+          { silent: true }
+        )
+        return 'saved'
+      } catch (err) {
+        if (errorStatus(err) === 409 && !payload.resetDocuments) return 'needs-confirmation'
+        useNotification().notify({ type: NotificationType.ERROR, message: errorMessage(err) })
+        return 'failed'
       } finally {
         this.loadingEmbeddings = false
       }
@@ -140,10 +132,7 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingSummarizer = true
       try {
         const api = useApi()
-        const res = await api.get<SummarizerModelSettings>('/settings/models/summarizer', {
-          headers: getSettingsAuthHeaders()
-        })
-        this.summarizer = res
+        this.summarizer = await api.get<SummarizerModelSettings>('/settings/models/summarizer')
         this.loadedSummarizer = true
         return this.summarizer
       } finally {
@@ -155,10 +144,10 @@ export const useModelSettingsStore = defineStore('model-settings', {
       this.loadingSummarizer = true
       try {
         const api = useApi()
-        const res = await api.put<SummarizerModelSettings>('/settings/models/summarizer', payload, {
-          headers: getSettingsAuthHeaders()
-        })
-        this.summarizer = res
+        this.summarizer = await api.put<SummarizerModelSettings>(
+          '/settings/models/summarizer',
+          payload
+        )
       } finally {
         this.loadingSummarizer = false
       }

@@ -8,6 +8,7 @@ import FilesDropzone from '~/components/files/FilesDropzone.vue'
 import UploadKeyDialog from '~/components/files/UploadKeyDialog.vue'
 
 const { confirm } = useConfirmDialog()
+const auth = useAuthStore()
 const filesStore = useFilesStore()
 const { files, loading, page, size, totalElements, totalPages } = storeToRefs(filesStore)
 
@@ -145,6 +146,14 @@ async function remove(file: FileRs) {
     </template>
 
     <div v-if="uploadOpen" class="ui-card files__upload">
+      <p v-if="!auth.user?.uploadKeySet" class="files__notice" role="status">
+        <Icon name="lucide:shield-alert" class="flex-none" />
+        <span>
+          Folders are encrypted with your upload password, which is not set yet.
+          <NuxtLink to="/account" class="files__notice-link">Set it in Account</NuxtLink>
+          to upload folders; single files work without it.
+        </span>
+      </p>
       <FilesDropzone v-model="selectedItems" :disabled="uploading || hasPending" />
 
       <div v-if="uploading || hasPending" class="files__progress">
@@ -155,9 +164,7 @@ async function remove(file: FileRs) {
               name="lucide:loader-circle"
               class="mr-1 animate-spin align-[-2px]"
             />
-            {{
-              uploading ? currentLabel : 'Upload interrupted. Resume asks for the upload key again'
-            }}
+            {{ uploading ? currentLabel : 'Upload interrupted. Resume continues where it stopped' }}
           </span>
           <span class="files__progress-value">
             {{ formatSize(loadedBytes) }} / {{ formatSize(totalBytes) }} · {{ progress }}%
@@ -269,6 +276,20 @@ async function remove(file: FileRs) {
 
 <style scoped>
 @import 'tailwindcss/theme';
+
+.files__notice {
+  @apply m-0 flex items-start gap-2 rounded-[10px] px-3 py-2.5 text-[13px] leading-snug;
+  background: rgba(255, 214, 10, 0.1);
+  color: var(--c-warning);
+}
+
+.files__notice :deep(svg) {
+  @apply mt-0.5;
+}
+
+.files__notice-link {
+  @apply font-medium underline;
+}
 
 .files__upload {
   @apply flex flex-col gap-4 p-4;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useConfirmDialog } from '~/composables/useConfirmDialog'
 
 const props = defineProps<{
   model: EmbeddingsModelSettings
@@ -10,6 +11,7 @@ const emit = defineEmits<{
   save: [payload: EmbeddingsModelSettings]
 }>()
 
+const { confirm } = useConfirmDialog()
 const form = ref<EmbeddingsModelSettings>({ ...props.model })
 
 watch(
@@ -20,20 +22,56 @@ watch(
   { deep: true, immediate: true }
 )
 
-const dirty = computed(() => JSON.stringify(form.value) !== JSON.stringify(props.model))
-const valid = computed(() =>
-  Boolean(form.value.baseUrl?.trim() && form.value.apiKey?.trim() && form.value.name?.trim())
-)
+function editable(model: EmbeddingsModelSettings) {
+  return {
+    baseUrl: model.baseUrl ?? '',
+    apiKey: model.apiKey ?? '',
+    name: model.name ?? '',
+    dimensions: Number(model.dimensions),
+    maxDocumentTokens: Number(model.maxDocumentTokens)
+  }
+}
 
-function save() {
+const dirty = computed(
+  () => JSON.stringify(editable(form.value)) !== JSON.stringify(editable(props.model))
+)
+const valid = computed(() =>
+  Boolean(
+    form.value.baseUrl?.trim() &&
+      form.value.apiKey?.trim() &&
+      form.value.name?.trim() &&
+      Number(form.value.dimensions) >= 1 &&
+      Number(form.value.dimensions) <= 16000 &&
+      Number(form.value.maxDocumentTokens) >= 16
+  )
+)
+const indexedChunks = computed(() => props.model.indexedChunks ?? 0)
+/** Vectors of another model, URL or size cannot be compared with the stored ones */
+const vectorsChange = computed(
+  () =>
+    form.value.name.trim() !== (props.model.name ?? '').trim() ||
+    form.value.baseUrl.trim() !== (props.model.baseUrl ?? '').trim() ||
+    Number(form.value.dimensions) !== Number(props.model.dimensions)
+)
+const willReset = computed(() => vectorsChange.value && indexedChunks.value > 0)
+
+async function save() {
   if (!valid.value) return
+  if (willReset.value) {
+    const ok = await confirm(
+      'Change the embedding model?',
+      `Your spaces hold ${indexedChunks.value} chunks indexed with the current model. They cannot be searched with another model, URL or dimension, so they will be deleted. The spaces stay, add their content again afterwards.`
+    )
+    if (!ok) return
+  }
   emit('save', {
     provider: 'OPENAI',
     baseUrl: form.value.baseUrl.trim(),
     apiKey: form.value.apiKey.trim(),
     name: form.value.name.trim(),
     dimensions: Number(form.value.dimensions),
-    maxDocumentTokens: Number(form.value.maxDocumentTokens)
+    maxDocumentTokens: Number(form.value.maxDocumentTokens),
+    resetDocuments: willReset.value
   })
 }
 </script>
@@ -98,7 +136,19 @@ function save() {
         </label>
       </div>
       <p class="ui-hint">
-        Dimensions must match the vector column; changing the model requires re-indexing spaces.
+        Dimensions must match what the model returns (1–16000). Max document tokens only affects
+        content added later.
+      </p>
+      <p v-if="willReset" class="section__warning" role="status">
+        <Icon name="lucide:triangle-alert" class="flex-none" />
+        <span>
+          Saving deletes the {{ indexedChunks }} chunks indexed in your spaces with the current
+          model.
+        </span>
+      </p>
+      <p v-else-if="indexedChunks" class="ui-hint">
+        {{ indexedChunks }} chunks are indexed with this model. The API key can change freely;
+        another model, URL or dimension requires indexing the spaces again.
       </p>
     </div>
 
@@ -140,5 +190,15 @@ function save() {
 
 .section__actions {
   @apply flex flex-wrap gap-2.5;
+}
+
+.section__warning {
+  @apply m-0 flex items-start gap-2 rounded-[10px] px-3 py-2.5 text-[13px] leading-snug;
+  background: rgba(255, 214, 10, 0.1);
+  color: var(--c-warning);
+}
+
+.section__warning :deep(svg) {
+  @apply mt-0.5;
 }
 </style>

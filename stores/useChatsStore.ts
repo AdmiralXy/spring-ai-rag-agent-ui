@@ -4,6 +4,7 @@ import { useApi } from '~/composables/useApi'
 import useNotification from '~/composables/useNotification'
 import { NotificationType } from '~/types/notification'
 import { readSseEvents } from '~/utils/sse'
+import { authHeaders, signOutLocally } from '~/composables/useAuthToken'
 
 function mergeChats(existing: Chat[], incoming: Chat[]) {
   const seen = new Set<string>()
@@ -239,7 +240,11 @@ export const useChatsStore = defineStore('chats', {
       try {
         const response = await fetch(`${baseURL}/chats/${chatId}/stream`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+            ...authHeaders()
+          },
           body: JSON.stringify({
             modelId: payload.modelId,
             text: payload.text,
@@ -248,6 +253,10 @@ export const useChatsStore = defineStore('chats', {
           })
         })
 
+        if (response.status === 401) {
+          signOutLocally(window.location.pathname)
+          return
+        }
         if (!response.ok || !response.body) {
           let message = `Request failed: ${response.status}`
           try {

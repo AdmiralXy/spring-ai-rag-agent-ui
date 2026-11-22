@@ -2,12 +2,14 @@
 defineProps<{
   title?: string
   subtitle?: string
+  /** Single-column pages such as forms: a centred, narrower column instead of the full page width. */
+  narrow?: boolean
 }>()
 </script>
 
 <template>
   <div class="wrapper">
-    <div class="ui-page">
+    <div class="ui-page" :class="{ 'wrapper__page--narrow': narrow }">
       <header
         v-if="title || $slots['header-actions'] || $slots['header-leading']"
         class="ui-page__header"
@@ -30,6 +32,10 @@ defineProps<{
 
 .wrapper {
   @apply h-full overflow-y-auto;
+}
+
+.wrapper__page--narrow {
+  @apply max-w-[720px];
 }
 
 .wrapper__titles {

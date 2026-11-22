@@ -48,8 +48,8 @@ function onOpenChange(open: boolean) {
 <template>
   <UModal
     :open="props.open"
-    title="Upload key"
-    description="Folders are encrypted before upload. Enter the upload key you were given."
+    title="Upload password"
+    description="Folders are encrypted in your browser before upload. Enter the upload password from your Account page; it is remembered until you reload the page."
     :dismissible="true"
     :ui="{ content: 'max-w-sm' }"
     @update:open="onOpenChange"
@@ -62,7 +62,7 @@ function onOpenChange(open: boolean) {
             v-model="password"
             :type="reveal ? 'text' : 'password'"
             class="ui-input upload-key__input"
-            placeholder="Upload key"
+            placeholder="Upload password"
             autocomplete="off"
             spellcheck="false"
             data-lpignore="true"

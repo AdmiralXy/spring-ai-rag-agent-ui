@@ -1,5 +1,6 @@
 import { computed, ref, shallowRef } from 'vue'
 import useNotification from '~/composables/useNotification'
+import { authHeaders, signOutLocally } from '~/composables/useAuthToken'
 import { NotificationType } from '~/types/notification'
 import { readAsDataUrl, splitFileName, type UploadItem } from '~/utils/fileUpload'
 import {
@@ -26,7 +27,7 @@ const BATCH_BODY_RESERVE = 64 * 1024
 const GCM_TAG_LENGTH = 16
 
 /**
- * Asks the user for the upload key. Resolves with the password, or null if the user cancelled.
+ * Asks the user for the upload password. Resolves with the password, or null if the user cancelled.
  * The caller must not keep the password: it is only used to derive a non-extractable key.
  */
 export type AskUploadKey = (opts: { error?: string }) => Promise<string | null>
@@ -76,9 +77,28 @@ class UploadAbortedError extends Error {
 /** The user closed the key dialog. */
 class UploadKeyCancelledError extends Error {
   constructor() {
-    super('Upload key is required')
+    super('Upload password is required')
     this.name = 'UploadKeyCancelledError'
   }
+}
+
+/** The account has no upload password yet. */
+class UploadKeyMissingError extends Error {
+  constructor() {
+    super('Set an upload password on the Account page before uploading folders')
+    this.name = 'UploadKeyMissingError'
+  }
+}
+
+/**
+ * Master key of the current page session, a non-extractable CryptoKey that lives only in memory
+ * (lost on reload). Bound to the KDF salt of the account it was derived for.
+ */
+let sessionMasterKey: { salt: string; key: CryptoKey } | null = null
+
+/** Forgets the cached key, e.g. after the upload password was changed. */
+export function forgetUploadKey() {
+  sessionMasterKey = null
 }
 
 function jobBytes(job: UploadJob) {
@@ -209,7 +229,14 @@ function validateLimits(jobs: UploadJob[], cfg: UploadConfigRs) {
 
 export function useFileUploader(askKey: AskUploadKey) {
   const config = useRuntimeConfig()
-  const http = $fetch.create({ baseURL: config.public.apiBase as string })
+  const http = $fetch.create({
+    baseURL: config.public.apiBase as string,
+    onRequest({ options }) {
+      const headers = new Headers(options.headers as HeadersInit | undefined)
+      for (const [name, value] of Object.entries(authHeaders())) headers.set(name, value)
+      options.headers = headers
+    }
+  })
   const { notify } = useNotification()
 
   const uploading = ref(false)
@@ -237,13 +264,21 @@ export function useFileUploader(askKey: AskUploadKey) {
     }
   }
 
-  /** Asks for the password and turns it into a non-extractable master key; the password is dropped here. */
+  /**
+   * Returns the master key of this page session, or asks for the password and turns it into a
+   * non-extractable key; the password is dropped here.
+   */
   async function obtainMasterKey(cfg: UploadConfigRs, error?: string) {
+    if (!cfg.encryption.keyConfigured) throw new UploadKeyMissingError()
+    if (!error && sessionMasterKey?.salt === cfg.encryption.kdfSalt) return sessionMasterKey.key
+    sessionMasterKey = null
     const password = await askKey({ error })
     if (!password) throw new UploadKeyCancelledError()
     preparingKey.value = true
     try {
-      return await deriveMasterKey(password, cfg.encryption)
+      const key = await deriveMasterKey(password, cfg.encryption)
+      sessionMasterKey = { salt: cfg.encryption.kdfSalt, key }
+      return key
     } finally {
       preparingKey.value = false
     }
@@ -303,7 +338,7 @@ export function useFileUploader(askKey: AskUploadKey) {
       keySalt: toBase64(keySalt),
       ...(await sealManifest(key, manifest))
     }
-    // not retried: a 401 here means a wrong upload key
+    // not retried: a 403 here means a wrong upload password
     const session = await http<CreateUploadRs>('/files/uploads', { method: 'POST', body, signal })
     job.uploadId = session.uploadId
     sessionKeys.set(job, key)
@@ -437,7 +472,7 @@ export function useFileUploader(askKey: AskUploadKey) {
           pendingJobs.value = []
           return 0
         }
-        currentLabel.value = 'Checking upload key…'
+        currentLabel.value = 'Checking upload password…'
         masterKey = await obtainMasterKey(cfg)
       }
 
@@ -454,9 +489,14 @@ export function useFileUploader(askKey: AskUploadKey) {
           } catch (err) {
             // keep the overall bar consistent: a retry recounts this job from the server state
             loadedBytes.value = before
-            if (job.kind === 'archive' && statusOf(err) === 401) {
-              currentLabel.value = 'Checking upload key…'
-              masterKey = await obtainMasterKey(cfg!, 'Wrong upload key, try again')
+            if (statusOf(err) === 401) {
+              // the session expired or was revoked
+              signOutLocally(window.location.pathname)
+              throw new UploadAbortedError()
+            }
+            if (job.kind === 'archive' && statusOf(err) === 403) {
+              currentLabel.value = 'Checking upload password…'
+              masterKey = await obtainMasterKey(cfg!, 'Wrong upload password, try again')
               currentLabel.value = `Uploading ${jobLabel(job)}`
               continue
             }
@@ -472,6 +512,9 @@ export function useFileUploader(askKey: AskUploadKey) {
         await cancelSessions(remaining, sessionKeys)
         pendingJobs.value = []
         notify({ type: NotificationType.WARNING, message: 'Upload cancelled' })
+      } else if (err instanceof UploadKeyMissingError) {
+        pendingJobs.value = []
+        notify({ type: NotificationType.WARNING, message: err.message })
       } else if (err instanceof UploadKeyCancelledError) {
         // nothing sent yet: just stop; otherwise keep the rest for a later resume
         pendingJobs.value =

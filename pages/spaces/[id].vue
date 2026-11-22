@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia'
 import { useConfirmDialog } from '~/composables/useConfirmDialog'
 import useNotification from '~/composables/useNotification'
 import { NotificationType } from '~/types/notification'
+import { SpaceUploadError } from '~/stores/useRagStore'
 import type { ProviderOption, UploadProvider } from '~/types/spaceUpload'
 import LayoutWrapper from '~/components/layout/LayoutWrapper.vue'
 import SpaceProviderSelector from '~/components/spaces/SpaceProviderSelector.vue'
@@ -509,11 +510,17 @@ async function addContent() {
     await ragStore.refreshDocuments(spaceId)
     resetCreateForm()
     creating.value = false
-  } catch {
+  } catch (err) {
+    const failure = err instanceof SpaceUploadError ? err : null
     notify({
       type: NotificationType.ERROR,
-      message: 'Failed to upload content'
+      title: 'Content was not added',
+      message:
+        (failure?.message || 'Adding the content failed') +
+        (failure?.partial ? '. Part of it was stored; delete it or add the rest again.' : ''),
+      duration: 12000
     })
+    if (failure?.partial) await ragStore.refreshDocuments(spaceId)
   } finally {
     uploading.value = false
   }

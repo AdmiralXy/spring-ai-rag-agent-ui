@@ -10,6 +10,24 @@ declare global {
     thinking?: boolean
     /** The model accepts images (screenshots can be attached) */
     vision?: boolean
+    /** The built-in model every user has; read-only */
+    builtin?: boolean
+  }
+
+  export interface UserRs {
+    id: string
+    email: string
+    /** An upload password is set, folders can be uploaded */
+    uploadKeySet: boolean
+  }
+
+  export interface AuthRs {
+    token: string
+    user: UserRs
+  }
+
+  export interface AuthConfigRs {
+    registrationEnabled: boolean
   }
 
   export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high'
@@ -88,6 +106,8 @@ declare global {
     keySaltLength: number
     ivLength: number
     tagLength: number
+    /** The user has set an upload password */
+    keyConfigured: boolean
   }
 
   export interface UploadConfigRs {
@@ -333,6 +353,8 @@ declare global {
     maxOutputTokens: number
     /** The model accepts images */
     vision: boolean
+    /** The built-in model every user has; its details are hidden and it cannot be changed */
+    builtin?: boolean
   }
 
   export interface UpsertChatModelRq {
@@ -364,6 +386,10 @@ declare global {
     name: string
     dimensions: number
     maxDocumentTokens: number
+    /** Chunks stored in the spaces of the user with the current model (read-only) */
+    indexedChunks?: number
+    /** Confirms deleting those chunks when the model, URL or dimensions change */
+    resetDocuments?: boolean
   }
 
   export interface SummarizerModelSettings {

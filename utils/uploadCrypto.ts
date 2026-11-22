@@ -47,11 +47,14 @@ export function assertSupportedEncryption(cfg: UploadEncryptionConfig) {
   }
 }
 
-/** password -> non-extractable HKDF base key. Slow on purpose (PBKDF2), call once per upload run. */
-export async function deriveMasterKey(
+/**
+ * password -> 256-bit PBKDF2 result, the user's master key. Slow on purpose.
+ * Only sent to the server once, when the upload password is set in the account settings.
+ */
+export async function deriveMasterKeyBytes(
   password: string,
   cfg: UploadEncryptionConfig
-): Promise<CryptoKey> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const passwordKey = await crypto.subtle.importKey(
     'raw',
     encoder.encode(password),
@@ -59,7 +62,7 @@ export async function deriveMasterKey(
     false,
     ['deriveBits']
   )
-  const master = new Uint8Array(
+  return new Uint8Array(
     await crypto.subtle.deriveBits(
       {
         name: 'PBKDF2',
@@ -71,6 +74,14 @@ export async function deriveMasterKey(
       256
     )
   )
+}
+
+/** password -> non-extractable HKDF base key. Slow on purpose (PBKDF2), call once per page session. */
+export async function deriveMasterKey(
+  password: string,
+  cfg: UploadEncryptionConfig
+): Promise<CryptoKey> {
+  const master = await deriveMasterKeyBytes(password, cfg)
   try {
     return await crypto.subtle.importKey('raw', master, 'HKDF', false, ['deriveKey'])
   } finally {

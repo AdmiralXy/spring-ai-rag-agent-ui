@@ -70,6 +70,7 @@ const form = ref<UpsertChatModelRq>(blank())
 const original = ref('')
 
 const selectedModel = computed(() => props.models.find((m) => m.id === selectedId.value))
+const selectedBuiltin = computed(() => Boolean(selectedModel.value?.builtin))
 const isNew = computed(() => selectedId.value === NEW)
 const isAgent = computed(() => form.value.provider === AGENT)
 // the Anthropic API no longer accepts sampling options, so temperature only applies to OpenAI
@@ -174,6 +175,7 @@ function providerLabel(provider: ChatModelProvider) {
 }
 
 function initials(model: ChatModelSettings) {
+  if (model.builtin) return model.label.slice(0, 3).toUpperCase()
   if (model.provider === AGENT) return 'AG'
   return model.provider === 'ANTHROPIC' ? 'A' : 'O'
 }
@@ -212,13 +214,25 @@ function initials(model: ChatModelSettings) {
           :aria-current="model.id === selectedId"
           @click="select(model.id)"
         >
-          <span class="models__badge" :class="{ 'models__badge--agent': model.provider === AGENT }">
+          <span
+            class="models__badge"
+            :class="{
+              'models__badge--agent': model.provider === AGENT,
+              'models__badge--builtin': model.builtin
+            }"
+          >
             {{ initials(model) }}
           </span>
           <span class="models__row-text">
-            <span class="models__row-title">{{ model.label }}</span>
+            <span class="models__row-title">
+              {{ model.label }}
+              <span v-if="model.builtin" class="ui-chip ui-chip--accent models__chip"
+                >Built-in</span
+              >
+            </span>
             <span class="models__row-meta">
-              {{ providerLabel(model.provider) }} · {{ model.name }}
+              <template v-if="model.builtin">Available to every account · read-only</template>
+              <template v-else>{{ providerLabel(model.provider) }} · {{ model.name }}</template>
             </span>
           </span>
           <Icon name="lucide:chevron-right" class="models__chevron" />
@@ -234,7 +248,50 @@ function initials(model: ChatModelSettings) {
       </p>
     </section>
 
-    <section v-if="selectedId" class="models__editor" aria-label="Edit model">
+    <section
+      v-if="selectedBuiltin && selectedModel"
+      class="models__editor"
+      aria-label="Built-in model"
+    >
+      <div class="models__editor-head">
+        <span class="models__editor-icon models__editor-icon--builtin">
+          <Icon name="lucide:sparkle" />
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="models__editor-title">{{ selectedModel.label }}</div>
+          <div class="ui-subtitle">Built-in model, ready to use without an API key</div>
+        </div>
+        <span class="ui-chip"><Icon name="lucide:lock" /> Read-only</span>
+      </div>
+
+      <div class="ui-group">
+        <div class="ui-group-row">
+          <span class="flex-1">Availability</span>
+          <span class="models__value">Every account</span>
+        </div>
+        <div class="ui-group-row">
+          <span class="flex-1">Streaming</span>
+          <span class="models__value">{{ selectedModel.streaming ? 'On' : 'Off' }}</span>
+        </div>
+        <div class="ui-group-row">
+          <span class="flex-1">Context window</span>
+          <span class="models__value"
+            >{{ selectedModel.maxContextTokens.toLocaleString() }} tokens</span
+          >
+        </div>
+        <div class="ui-group-row">
+          <span class="flex-1">Priority</span>
+          <span class="models__value">{{ selectedModel.priority }}</span>
+        </div>
+      </div>
+      <p class="ui-hint">
+        The server provides this model so the project can be tried right away; its connection is
+        managed by the server and it cannot be edited or deleted. Add your own model to use another
+        provider: models with a lower priority come first.
+      </p>
+    </section>
+
+    <section v-else-if="selectedId" class="models__editor" aria-label="Edit model">
       <div class="models__editor-head">
         <span class="models__editor-icon">
           <Icon :name="isAgent ? 'lucide:terminal' : 'lucide:sparkles'" />
@@ -487,6 +544,25 @@ function initials(model: ChatModelSettings) {
 .models__badge--new {
   background: var(--c-accent-fill);
   color: #fff;
+}
+
+.models__badge--builtin {
+  @apply text-[10.5px] tracking-[0.02em];
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  color: #fff;
+}
+
+.models__chip {
+  @apply ml-1.5 h-[18px] px-1.5 align-middle text-[10.5px];
+}
+
+.models__value {
+  @apply text-sm;
+  color: var(--c-text-3);
+}
+
+.models__editor-icon--builtin {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.22), rgba(94, 92, 230, 0.22));
 }
 
 .models__row-text {

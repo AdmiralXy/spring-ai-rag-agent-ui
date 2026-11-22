@@ -14,6 +14,7 @@ const { startNewChat } = useNewChat()
 const chatsStore = useChatsStore()
 const spacesStore = useSpacesStore()
 const modelsStore = useModelsStore()
+const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -134,6 +135,11 @@ function onChatsScroll() {
 async function onNewChat() {
   await startNewChat()
   emit('navigate')
+}
+
+async function signOut() {
+  const ok = await confirm('Sign out?', 'You will need your email and password to sign in again.')
+  if (ok) await auth.logout()
 }
 
 async function removeChat(id: string) {
@@ -284,6 +290,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     </div>
 
     <div class="sb__footer">
+      <NuxtLink
+        to="/account"
+        class="sb__user"
+        :class="{ 'sb__user--active': route.path.startsWith('/account') }"
+        :aria-current="route.path.startsWith('/account') ? 'page' : undefined"
+        :title="auth.user?.email"
+        @click="emit('navigate')"
+      >
+        <span class="sb__avatar">{{ auth.user?.email.charAt(0).toUpperCase() }}</span>
+        <span class="sb__user-email">{{ auth.user?.email }}</span>
+      </NuxtLink>
+      <button
+        type="button"
+        class="ui-icon-btn"
+        aria-label="Sign out"
+        title="Sign out"
+        @click="signOut"
+      >
+        <Icon name="lucide:log-out" />
+      </button>
+    </div>
+
+    <div class="sb__footer sb__footer--compact">
       <NuxtLink
         to="/settings/models"
         class="sb__nav-item sb__nav-item--footer"
@@ -484,5 +513,39 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 .sb__nav-item--footer {
   @apply flex-1;
+}
+
+.sb__footer--compact {
+  @apply -mt-2.5 border-t-0 pt-0;
+}
+
+.sb__user {
+  @apply flex h-[38px] min-w-0 flex-1 items-center gap-2.5 rounded-[9px] px-1.5 transition-colors;
+  color: var(--c-text-2);
+}
+
+.sb__user:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+
+.sb__user--active,
+.sb__user--active:hover {
+  background: var(--c-selected);
+  color: var(--c-text);
+}
+
+.sb__user--active .sb__user-email {
+  @apply font-medium;
+}
+
+.sb__avatar {
+  @apply flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full text-[12px] font-semibold;
+  background: linear-gradient(135deg, #0a84ff, #5e5ce6);
+  color: #fff;
+}
+
+.sb__user-email {
+  @apply min-w-0 flex-1 truncate text-[13px];
 }
 </style>

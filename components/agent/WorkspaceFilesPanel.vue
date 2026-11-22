@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useApi } from '~/composables/useApi'
+import { errorMessage, useApi } from '~/composables/useApi'
+import { authHeaders } from '~/composables/useAuthToken'
+import useNotification from '~/composables/useNotification'
+import { NotificationType } from '~/types/notification'
 
 const props = defineProps<{
   chatId: string
@@ -15,12 +18,38 @@ const baseURL = config.public.apiBase as string
 
 const listing = ref<WorkspaceListing>({ entries: [], truncated: false })
 const loading = ref(false)
+const downloading = ref<string | null>(null)
+const { notify } = useNotification()
 
 const fileCount = computed(() => listing.value.entries.filter((e) => e.type === 'file').length)
 const archiveUrl = computed(() => `${baseURL}/chats/${props.chatId}/files/archive`)
 
 function fileUrl(path: string) {
   return `${baseURL}/chats/${props.chatId}/files/content?path=${encodeURIComponent(path)}`
+}
+
+/** Downloads through fetch: the API needs the bearer token, which a plain link cannot send. */
+async function download(url: string, fallbackName: string, key: string) {
+  if (downloading.value) return
+  downloading.value = key
+  try {
+    const response = await fetch(url, { headers: authHeaders() })
+    if (!response.ok) throw new Error(`Download failed (${response.status})`)
+    const disposition = response.headers.get('Content-Disposition') ?? ''
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+    const plain = /filename="?([^";]+)"?/i.exec(disposition)?.[1]
+    const fileName = encoded ? decodeURIComponent(encoded) : plain || fallbackName
+    const blobUrl = URL.createObjectURL(await response.blob())
+    const link = Object.assign(document.createElement('a'), { href: blobUrl, download: fileName })
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 0)
+  } catch (err) {
+    notify({ type: NotificationType.ERROR, message: errorMessage(err, 'Download failed') })
+  } finally {
+    downloading.value = null
+  }
 }
 
 function depth(path: string) {
@@ -111,7 +140,8 @@ onMounted(refresh)
           class="files__row files__row--file"
           :style="{ paddingLeft: `${10 + depth(entry.path) * 16}px` }"
           :title="`Download ${entry.path}`"
-          download
+          :aria-busy="downloading === entry.path"
+          @click.prevent="download(fileUrl(entry.path), name(entry.path), entry.path)"
         >
           <Icon name="lucide:file" class="files__icon" />
           <span class="files__name">{{ name(entry.path) }}</span>
@@ -125,8 +155,15 @@ onMounted(refresh)
     </ul>
 
     <div v-if="fileCount" class="files__footer">
-      <a :href="archiveUrl" class="ui-btn ui-btn--secondary files__zip" download>
-        <Icon name="lucide:download" />
+      <a
+        :href="archiveUrl"
+        class="ui-btn ui-btn--secondary files__zip"
+        @click.prevent="download(archiveUrl, 'workspace.zip', 'archive')"
+      >
+        <Icon
+          :name="downloading === 'archive' ? 'lucide:loader-circle' : 'lucide:download'"
+          :class="{ 'animate-spin': downloading === 'archive' }"
+        />
         Download all as .zip
       </a>
     </div>

@@ -1,5 +1,18 @@
 import { defineStore } from 'pinia'
 import { useApi } from '~/composables/useApi'
+import { authHeaders, signOutLocally } from '~/composables/useAuthToken'
+import { readSseEvents } from '~/utils/sse'
+
+/** Adding content to a space failed; `partial` tells that some chunks were stored before the error. */
+export class SpaceUploadError extends Error {
+  constructor(
+    message: string,
+    readonly partial = false
+  ) {
+    super(message)
+    this.name = 'SpaceUploadError'
+  }
+}
 
 const DEFAULT_DOCUMENT_LIMIT = 20
 
@@ -103,7 +116,10 @@ export const useRagStore = defineStore('rag', {
       }
     },
 
-    /** Add document to space using server-sent events for progress */
+    /**
+     * Adds content to a space; the backend streams the progress in percent. A failure arrives as an
+     * `error` event with a readable message and is thrown as a SpaceUploadError.
+     */
     async addDocumentStream(
       spaceId: string,
       payload: AddToSpaceRq,
@@ -114,39 +130,71 @@ export const useRagStore = defineStore('rag', {
         ? (config.apiBase as string)
         : (config.public.apiBase as string)
 
-      const res = await fetch(`${baseURL}/rag/${spaceId}/documents/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-
-      if (!res.ok) {
-        const errorText = await res.text()
-        throw new Error(errorText || 'Upload failed')
+      let res: Response
+      try {
+        res = await fetch(`${baseURL}/rag/${spaceId}/documents/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+            ...authHeaders()
+          },
+          body: JSON.stringify(payload)
+        })
+      } catch {
+        throw new SpaceUploadError('The server cannot be reached, check your connection')
       }
 
-      if (!res.body) {
-        throw new Error('Upload failed')
+      if (res.status === 401) {
+        signOutLocally(window.location.pathname)
+        throw new SpaceUploadError('Your session has expired, sign in again')
+      }
+      if (!res.ok || !res.body) {
+        let message = `Adding the content failed (${res.status})`
+        try {
+          const body = await res.json()
+          message = body?.detail || body?.message || message
+        } catch {
+          // not JSON
+        }
+        throw new SpaceUploadError(message)
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data:')) {
-            const raw = line.slice(5).trim()
-            if (raw && raw !== '[DONE]') {
-              const num = Number(raw.replace('%', ''))
-              if (!isNaN(num)) {
-                onProgress(num)
-              }
+      let completed = false
+      let started = false
+      try {
+        for await (const { event, data } of readSseEvents(res.body)) {
+          if (event === 'error') {
+            let message = 'Adding the content failed'
+            let partial = started
+            try {
+              const json = JSON.parse(data)
+              message = json.message || message
+              partial = Boolean(json.partial)
+            } catch {
+              message = data || message
             }
+            throw new SpaceUploadError(message, partial)
+          }
+          const percent = Number(data.replace('%', '').trim())
+          if (!Number.isNaN(percent)) {
+            started = true
+            completed = percent >= 100
+            onProgress(percent)
           }
         }
+      } catch (err) {
+        if (err instanceof SpaceUploadError) throw err
+        throw new SpaceUploadError(
+          'The connection was interrupted while adding the content',
+          started
+        )
+      }
+      if (!completed) {
+        throw new SpaceUploadError(
+          'The server stopped before the content was fully added, try again',
+          started
+        )
       }
     },
 
