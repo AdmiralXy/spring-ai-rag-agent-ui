@@ -17,7 +17,7 @@ const config = useRuntimeConfig()
 const baseURL = config.public.apiBase as string
 
 const listing = ref<WorkspaceListing>({ entries: [], truncated: false })
-const loading = ref(false)
+const loading = ref(true)
 const downloading = ref<string | null>(null)
 const { notify } = useNotification()
 
@@ -118,9 +118,24 @@ onMounted(refresh)
       </button>
     </div>
 
-    <div v-if="!listing.entries.length" class="files__empty">
+    <ul
+      v-if="loading && !listing.entries.length"
+      class="files__list"
+      aria-busy="true"
+      aria-label="Loading files"
+    >
+      <li v-for="n in 6" :key="n" class="files__row files__row--skeleton">
+        <USkeleton class="h-4 w-4 flex-none rounded" />
+        <USkeleton
+          class="h-3.5 rounded"
+          :style="{ width: `${[60, 45, 72, 38, 55, 66][n - 1]}%` }"
+        />
+      </li>
+    </ul>
+
+    <div v-else-if="!listing.entries.length" class="files__empty">
       <Icon name="lucide:folder-open" class="files__empty-icon" />
-      <p>{{ loading ? 'Loading…' : 'Files the agent creates will appear here.' }}</p>
+      <p>Files the agent creates will appear here.</p>
     </div>
 
     <ul v-else class="files__list">
@@ -205,6 +220,10 @@ onMounted(refresh)
 .files__row {
   @apply flex h-8 min-w-0 items-center gap-2 rounded-[8px] pr-2.5 text-[13px];
   color: var(--c-text-2);
+}
+
+.files__row--skeleton {
+  @apply pl-2.5;
 }
 
 .files__row--file:hover {

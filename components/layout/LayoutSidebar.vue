@@ -18,21 +18,21 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
-await useAsyncData('spaces-sidebar', async () => {
+useLazyAsyncData('spaces-sidebar', async () => {
   if (!spacesStore.spaces.length) {
     await spacesStore.fetchSpaces(1000)
   }
   return spacesStore.spaces
 })
 
-await useAsyncData('chats', async () => {
+useLazyAsyncData('chats', async () => {
   if (!chatsStore.chatsInitialized) {
     await chatsStore.initializeChats()
   }
   return chatsStore.chats
 })
 
-await useAsyncData('models-sidebar', async () => {
+useLazyAsyncData('models-sidebar', async () => {
   if (!modelsStore.models.length) await modelsStore.fetchModels()
   return modelsStore.models
 })
@@ -243,6 +243,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     </div>
 
     <div ref="chatsListRef" class="sb__chats" @scroll.passive="onChatsScroll">
+      <div
+        v-if="!isSearching && !chatsStore.chatsInitialized && chatsStore.chatsLoading"
+        aria-busy="true"
+        aria-label="Loading chats"
+      >
+        <USkeleton class="sb__skeleton-group" />
+        <div v-for="n in 8" :key="n" class="sb__skeleton-row">
+          <USkeleton
+            class="h-3.5 rounded"
+            :style="{ width: `${[72, 58, 84, 64, 46, 78, 60, 52][n - 1]}%` }"
+          />
+        </div>
+      </div>
       <template v-for="group in groups" :key="group.label">
         <div v-if="group.label" class="sb__group">{{ group.label }}</div>
         <div
@@ -499,6 +512,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   .sb__chat-delete {
     @apply flex;
   }
+}
+
+.sb__skeleton-group {
+  @apply mx-2.5 mt-3 mb-2 h-2.5 w-14 rounded;
+}
+
+.sb__skeleton-row {
+  @apply flex h-[34px] items-center px-2.5;
 }
 
 .sb__status {

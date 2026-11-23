@@ -18,8 +18,12 @@ const { confirm } = useConfirmDialog()
 
 const chatId = router.currentRoute.value.params.id as string
 chatsStore.activeChatId = chatId
-await chatsStore.ensureChatLoaded(chatId)
-await chatsStore.loadHistory(chatId)
+// the page opens right away with skeletons; the chat and its history load behind them
+const { status: historyStatus } = useLazyAsyncData(`chat-history-${chatId}`, async () => {
+  await chatsStore.ensureChatLoaded(chatId)
+  await chatsStore.loadHistory(chatId)
+  return true
+})
 
 const messagesContainer = ref<HTMLDivElement | null>(null)
 const draftText = ref('')
@@ -34,17 +38,21 @@ const currentSpaces = computed(() =>
 )
 const currentSpacesLabel = computed(() => currentSpaces.value.map((space) => space.name).join(', '))
 const title = computed(() => displayChatTitle(currentChat.value?.title))
+const historyLoading = computed(
+  () => chatsStore.messages[chatId] === undefined && historyStatus.value !== 'error'
+)
+const titleLoading = computed(() => !currentChat.value && historyStatus.value !== 'error')
 const selectedModelLabel = computed(
   () => modelsStore.getByValue(selectedModelId.value)?.label ?? ''
 )
 
 const modelsStore = useModelsStore()
-await useAsyncData('models', async () => {
+useLazyAsyncData('models', async () => {
   await modelsStore.fetchModels()
   return modelsStore.models
 })
 
-await useAsyncData('prompt-templates-chat', async () => {
+useLazyAsyncData('prompt-templates-chat', async () => {
   await promptTemplatesStore.fetchPromptTemplates()
   return promptTemplatesStore.templates
 })
@@ -170,8 +178,9 @@ function isNearBottom() {
 
 watch(
   () => chatsStore.activeMessages.length,
-  async () => {
-    await scrollToBottom(true)
+  async (_, previous) => {
+    // the loaded history jumps to the end, new messages scroll there smoothly
+    await scrollToBottom(previous > 0)
   }
 )
 
@@ -260,8 +269,12 @@ async function handleSend(payload: { text: string; files: File[]; images: ChatAt
     <div class="chat__main">
       <header class="chat__header">
         <div class="chat__heading">
-          <h1 class="chat__title">{{ title }}</h1>
-          <p class="chat__meta">
+          <template v-if="titleLoading">
+            <USkeleton class="h-4 w-48 max-w-full rounded" />
+            <USkeleton class="mt-1.5 h-3 w-28 rounded" />
+          </template>
+          <h1 v-else class="chat__title">{{ title }}</h1>
+          <p v-if="!titleLoading" class="chat__meta">
             <span v-if="selectedModelLabel">{{ selectedModelLabel }}</span>
             <template v-if="currentSpaces.length">
               <span class="chat__meta-dot" aria-hidden="true">·</span>
@@ -289,7 +302,26 @@ async function handleSend(payload: { text: string; files: File[]; images: ChatAt
 
       <div ref="messagesContainer" class="chat__scroll">
         <div class="chat__messages">
-          <template v-if="chatsStore.activeMessages.length > 0">
+          <div
+            v-if="historyLoading && !chatsStore.activeMessages.length"
+            class="chat__skeleton"
+            aria-busy="true"
+            aria-label="Loading messages"
+          >
+            <template v-for="n in 2" :key="n">
+              <div class="chat__skeleton-user">
+                <USkeleton class="chat__skeleton-bubble" :class="n === 1 ? 'w-64' : 'w-44'" />
+              </div>
+              <div class="chat__skeleton-answer">
+                <USkeleton class="h-4 w-full rounded" />
+                <USkeleton class="h-4 w-[94%] rounded" />
+                <USkeleton class="h-4 w-[86%] rounded" />
+                <USkeleton v-if="n === 1" class="h-4 w-[62%] rounded" />
+              </div>
+            </template>
+          </div>
+
+          <template v-else-if="chatsStore.activeMessages.length > 0">
             <ChatMessages
               v-for="(m, idx) in chatsStore.activeMessages"
               :key="messageKey(m)"
@@ -415,6 +447,23 @@ async function handleSend(payload: { text: string; files: File[]; images: ChatAt
 
 .chat__messages {
   @apply mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-6;
+}
+
+.chat__skeleton {
+  @apply flex flex-col gap-6;
+}
+
+.chat__skeleton-user {
+  @apply flex justify-end;
+}
+
+.chat__skeleton-bubble {
+  @apply h-11 max-w-[78%];
+  border-radius: 18px 18px 6px 18px;
+}
+
+.chat__skeleton-answer {
+  @apply flex flex-col gap-2.5;
 }
 
 .chat__empty {

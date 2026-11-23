@@ -15,7 +15,7 @@ const editingId = ref<string | null>(null)
 const editName = ref('')
 const editContent = ref('')
 
-await useAsyncData('prompt-templates', async () => {
+useLazyAsyncData('prompt-templates', async () => {
   await promptsStore.fetchPromptTemplates()
   return promptsStore.templates
 })

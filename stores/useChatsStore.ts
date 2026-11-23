@@ -6,6 +6,9 @@ import { NotificationType } from '~/types/notification'
 import { readSseEvents } from '~/utils/sse'
 import { authHeaders, signOutLocally } from '~/composables/useAuthToken'
 
+/** The chats list request in flight, per store instance (one per request during SSR) */
+const chatsRequests = new WeakMap<object, Promise<Chat[]>>()
+
 function mergeChats(existing: Chat[], incoming: Chat[]) {
   const seen = new Set<string>()
   const merged: Chat[] = []
@@ -101,29 +104,41 @@ export const useChatsStore = defineStore('chats', {
         if (this.chatsLoadingMore || !this.hasMoreChats) return this.chats
         this.chatsLoadingMore = true
       } else {
-        if (this.chatsLoading) return this.chats
+        // a second caller waits for the list already loading instead of getting the empty one
+        const inflight = chatsRequests.get(this)
+        if (inflight) return inflight
         this.chatsLoading = true
       }
 
-      try {
-        const api = useApi()
-        const nextSize = size ?? this.chatsPageSize
-        const res = await api.get<GetChatsRs>('/chats', { query: { page, size: nextSize } })
-        const meta = getPageMeta(res.chats)
+      const request = (async () => {
+        try {
+          const api = useApi()
+          const nextSize = size ?? this.chatsPageSize
+          const res = await api.get<GetChatsRs>('/chats', { query: { page, size: nextSize } })
+          const meta = getPageMeta(res.chats)
 
-        this.chats = append ? mergeChats(this.chats, res.chats.content) : res.chats.content
-        this.chatsPage = meta.number
-        this.chatsPageSize = meta.size
-        this.hasMoreChats = resolveHasMoreChats(res.chats)
-        this.chatsInitialized = true
-        return this.chats
-      } finally {
-        if (append) {
-          this.chatsLoadingMore = false
-        } else {
-          this.chatsLoading = false
+          this.chats = append ? mergeChats(this.chats, res.chats.content) : res.chats.content
+          this.chatsPage = meta.number
+          this.chatsPageSize = meta.size
+          this.hasMoreChats = resolveHasMoreChats(res.chats)
+          this.chatsInitialized = true
+          return this.chats
+        } finally {
+          if (append) {
+            this.chatsLoadingMore = false
+          } else {
+            this.chatsLoading = false
+          }
         }
+      })()
+      if (!append) {
+        chatsRequests.set(this, request)
+        const clear = () => {
+          if (chatsRequests.get(this) === request) chatsRequests.delete(this)
+        }
+        request.then(clear, clear)
       }
+      return request
     },
 
     async initializeChats(size?: number) {

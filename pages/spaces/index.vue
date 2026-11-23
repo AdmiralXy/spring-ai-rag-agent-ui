@@ -10,7 +10,7 @@ const { spaces, loading } = storeToRefs(spacesStore)
 const newSpaceName = ref('')
 const creating = ref(false)
 
-await useAsyncData('spaces-page', async () => {
+useLazyAsyncData('spaces-page', async () => {
   await spacesStore.fetchSpaces(1000)
   return spacesStore.spaces
 })

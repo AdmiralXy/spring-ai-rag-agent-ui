@@ -142,12 +142,12 @@ watch(
   { immediate: true }
 )
 
-await useAsyncData(`spaces-${spaceId}`, async () => {
+useLazyAsyncData(`spaces-${spaceId}`, async () => {
   if (!spacesStore.spaces.length) await spacesStore.fetchSpaces(1000)
   return spacesStore.spaces
 })
 
-await useAsyncData(`documents-${spaceId}`, async () => {
+useLazyAsyncData(`documents-${spaceId}`, async () => {
   await ragStore.initializeDocuments(spaceId)
   return ragStore.getDocsBySpace(spaceId)
 })
@@ -572,7 +572,11 @@ watch(
 </script>
 
 <template>
-  <LayoutWrapper :title="space?.name" subtitle="Space">
+  <LayoutWrapper
+    :title="space?.name"
+    :title-loading="!space && spacesStore.loading"
+    subtitle="Space"
+  >
     <template #header-leading>
       <NuxtLink to="/spaces" class="space__back" aria-label="Back to spaces">
         <Icon name="lucide:chevron-left" />

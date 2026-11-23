@@ -4,6 +4,8 @@ defineProps<{
   subtitle?: string
   /** Single-column pages such as forms: a centred, narrower column instead of the full page width. */
   narrow?: boolean
+  /** The title is still loading: a skeleton stands in for it. */
+  titleLoading?: boolean
 }>()
 </script>
 
@@ -11,12 +13,13 @@ defineProps<{
   <div class="wrapper">
     <div class="ui-page" :class="{ 'wrapper__page--narrow': narrow }">
       <header
-        v-if="title || $slots['header-actions'] || $slots['header-leading']"
+        v-if="title || titleLoading || $slots['header-actions'] || $slots['header-leading']"
         class="ui-page__header"
       >
         <slot name="header-leading" />
         <div class="wrapper__titles">
-          <h1 class="ui-title">{{ title }}</h1>
+          <USkeleton v-if="titleLoading && !title" class="h-8 w-56 max-w-full rounded-lg" />
+          <h1 v-else class="ui-title">{{ title }}</h1>
           <p v-if="subtitle" class="ui-subtitle">{{ subtitle }}</p>
         </div>
         <slot name="header-actions" />

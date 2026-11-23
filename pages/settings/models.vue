@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ChatModelsSection from '~/components/settings/models/ChatModelsSection.vue'
 import EmbeddingsModelSection from '~/components/settings/models/EmbeddingsModelSection.vue'
 import SummarizerModelSection from '~/components/settings/models/SummarizerModelSection.vue'
@@ -23,7 +23,17 @@ const views: Array<{ key: ModelsView; label: string }> = [
 
 const activeView = ref<ModelsView>('chat')
 
-await useAsyncData('settings-models', async () => {
+// a section shows skeletons until its settings have been loaded once
+const viewLoaded = computed(
+  () =>
+    ({
+      chat: settingsStore.loadedChat,
+      embeddings: settingsStore.loadedEmbeddings,
+      summarizer: settingsStore.loadedSummarizer
+    })[activeView.value]
+)
+
+useLazyAsyncData('settings-models', async () => {
   await Promise.all([
     settingsStore.fetchChatModels(),
     settingsStore.fetchEmbeddings(),
@@ -66,8 +76,40 @@ async function saveEmbeddings(payload: EmbeddingsModelSettings) {
     </div>
 
     <ClientOnly>
+      <div
+        v-if="!viewLoaded"
+        class="models-skeleton"
+        aria-busy="true"
+        aria-label="Loading settings"
+      >
+        <template v-if="activeView === 'chat'">
+          <USkeleton class="h-3 w-24 rounded" />
+          <div class="ui-group">
+            <div v-for="n in 3" :key="n" class="ui-group-row models-skeleton__row">
+              <USkeleton class="h-9 w-9 flex-none rounded-[9px]" />
+              <div class="flex flex-1 flex-col gap-1.5">
+                <USkeleton class="h-4 w-40 max-w-full rounded" />
+                <USkeleton class="h-3 w-56 max-w-full rounded" />
+              </div>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <template v-for="n in 2" :key="n">
+            <USkeleton class="h-3 w-20 rounded" />
+            <div class="ui-group">
+              <div v-for="r in 3" :key="r" class="ui-group-row models-skeleton__row">
+                <USkeleton class="h-4 w-28 flex-none rounded" />
+                <div class="flex-1" />
+                <USkeleton class="h-4 w-44 max-w-[45%] rounded" />
+              </div>
+            </div>
+          </template>
+        </template>
+      </div>
+
       <ChatModelsSection
-        v-if="activeView === 'chat'"
+        v-else-if="activeView === 'chat'"
         :models="settingsStore.chatModels"
         :loading="settingsStore.loadingChat"
         @create="settingsStore.createChatModel"
@@ -88,12 +130,39 @@ async function saveEmbeddings(payload: EmbeddingsModelSettings) {
         :loading="settingsStore.loadingSummarizer"
         @save="settingsStore.updateSummarizer"
       />
+
+      <template #fallback>
+        <div class="models-skeleton" aria-busy="true" aria-label="Loading settings">
+          <USkeleton class="h-3 w-24 rounded" />
+          <div class="ui-group">
+            <div v-for="n in 3" :key="n" class="ui-group-row models-skeleton__row">
+              <USkeleton class="h-9 w-9 flex-none rounded-[9px]" />
+              <div class="flex flex-1 flex-col gap-1.5">
+                <USkeleton class="h-4 w-40 max-w-full rounded" />
+                <USkeleton class="h-3 w-56 max-w-full rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </ClientOnly>
   </LayoutWrapper>
 </template>
 
 <style scoped>
 @import 'tailwindcss/theme';
+
+.models-skeleton {
+  @apply flex max-w-[520px] flex-col gap-2;
+}
+
+.models-skeleton > .ui-group + :deep(*) {
+  @apply mt-4;
+}
+
+.models-skeleton__row {
+  @apply min-h-[56px] gap-3;
+}
 
 .models-tabs {
   @apply self-start max-sm:w-full max-sm:overflow-x-auto;

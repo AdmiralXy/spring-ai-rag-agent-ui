@@ -40,7 +40,7 @@ const selectedItems = ref<UploadItem[]>([])
 const downloadingId = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
 
-await useAsyncData('files-page', async () => {
+useLazyAsyncData('files-page', async () => {
   await filesStore.fetchFiles(0)
   return filesStore.files
 })

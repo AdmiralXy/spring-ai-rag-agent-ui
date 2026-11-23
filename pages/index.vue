@@ -7,7 +7,7 @@ const chatsStore = useChatsStore()
 const modelsStore = useModelsStore()
 const { startNewChat } = useNewChat()
 
-await useAsyncData('chats-home', async () => {
+useLazyAsyncData('chats-home', async () => {
   if (!chatsStore.chatsInitialized) await chatsStore.initializeChats()
   return true
 })
@@ -54,7 +54,24 @@ function when(chat: Chat) {
         New chat
       </button>
 
-      <section v-if="recent.length" class="home__recent" aria-label="Recent chats">
+      <section
+        v-if="!chatsStore.chatsInitialized && chatsStore.chatsLoading"
+        class="home__recent"
+        aria-label="Loading recent chats"
+        aria-busy="true"
+      >
+        <USkeleton class="h-3 w-16 rounded" />
+        <div class="ui-group">
+          <div v-for="n in 4" :key="n" class="ui-group-row home__row">
+            <USkeleton class="h-4 w-4 flex-none rounded" />
+            <USkeleton class="h-4 flex-1 rounded" :style="{ maxWidth: `${70 - n * 9}%` }" />
+            <div class="flex-1" />
+            <USkeleton class="h-3 w-14 flex-none rounded" />
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="recent.length" class="home__recent" aria-label="Recent chats">
         <div class="ui-section-label">Recent</div>
         <div class="ui-group">
           <NuxtLink

@@ -17,6 +17,9 @@ export default defineAppConfig({
         }
       ]
     },
+    skeleton: {
+      base: 'animate-pulse rounded-md bg-white/[0.07]'
+    },
     selectMenu: {
       slots: {
         content:
