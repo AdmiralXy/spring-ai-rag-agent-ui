@@ -24,4 +24,6 @@ ENV HOST=0.0.0.0 PORT=3000 NODE_ENV=production
 ENV NUXT_PUBLIC_BUILD_NUMBER=${BUILD_NUMBER}
 ENV NUXT_PUBLIC_BUILD_DATE=${BUILD_DATE}
 ENV NUXT_PUBLIC_REPOSITORY_URL=${REPOSITORY_URL}
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3   CMD wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1
 CMD ["dumb-init", "node", "/app/server/index.mjs"]
